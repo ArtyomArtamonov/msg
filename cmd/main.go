@@ -7,6 +7,7 @@ import (
 	api "github.com/ArtyomArtamonov/msg/pkg/api"
 	pb "github.com/ArtyomArtamonov/msg/pkg/api/proto"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 )
 
 func main() {
@@ -18,6 +19,8 @@ func main() {
 
 	server := api.NewMessageService()
 	pb.RegisterMessageServiceServer(grpcServer, server)
+	
+	reflection.Register(grpcServer)
 
 	if err := grpcServer.Serve(lis); err != nil {
 		log.Fatal(err.Error())

@@ -51,7 +51,7 @@ func (c *messageServiceClient) GetMessages(ctx context.Context, in *empty.Empty,
 }
 
 type MessageService_GetMessagesClient interface {
-	Recv() (*Response, error)
+	Recv() (*Message, error)
 	grpc.ClientStream
 }
 
@@ -59,8 +59,8 @@ type messageServiceGetMessagesClient struct {
 	grpc.ClientStream
 }
 
-func (x *messageServiceGetMessagesClient) Recv() (*Response, error) {
-	m := new(Response)
+func (x *messageServiceGetMessagesClient) Recv() (*Message, error) {
+	m := new(Message)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -117,7 +117,7 @@ func _MessageService_GetMessages_Handler(srv interface{}, stream grpc.ServerStre
 }
 
 type MessageService_GetMessagesServer interface {
-	Send(*Response) error
+	Send(*Message) error
 	grpc.ServerStream
 }
 
@@ -125,7 +125,7 @@ type messageServiceGetMessagesServer struct {
 	grpc.ServerStream
 }
 
-func (x *messageServiceGetMessagesServer) Send(m *Response) error {
+func (x *messageServiceGetMessagesServer) Send(m *Message) error {
 	return x.ServerStream.SendMsg(m)
 }
 

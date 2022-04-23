@@ -7,20 +7,17 @@ import "google/protobuf/empty.proto";
 option go_package = "github.com/ArtyomArtamonov/msg/pkg/api";
 
 message Message {
-    string to = 1;
-    string message = 2;
-}
-
-message Response {
-    string sender = 1;
-    string message = 2;
+    string from = 1;
+    string to = 2;
+    string message = 3;
 }
 
 message Status {
     bool success = 1;
+    string message = 2;
 }
 
 service MessageService {
-    rpc GetMessages(google.protobuf.Empty) returns (stream Response);
+    rpc GetMessages(google.protobuf.Empty) returns (stream Message);
     rpc SendMessage(Message) returns (Status);
 }
