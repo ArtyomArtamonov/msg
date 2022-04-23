@@ -21,8 +21,8 @@ func NewMessageService() *MessageService {
 }
 
 func (s *MessageService) GetMessages(req *emptypb.Empty, srv pb.MessageService_GetMessagesServer) error {
-	s.clients.Store(0, srv)
-	
+	s.clients.Store(s.getId(), srv)
+
 	<-srv.Context().Done()
 
 	return nil
@@ -32,10 +32,6 @@ func (s *MessageService) SendMessage(ctx context.Context, req *pb.Message) (*pb.
 	id, err := strconv.Atoi(req.To)
 	if err != nil {
 		return nil, err
-	}
-
-	if id != 0 {
-		return nil, fmt.Errorf("id %d is not supported in this version (use id: 0)", id)
 	}
 
 	err = s.sendMessage(req.Message, id)
@@ -62,4 +58,13 @@ func (s MessageService) sendMessage(message string, id int) error {
 	}
 	err := client.(pb.MessageService_GetMessagesServer).Send(&msg)
 	return err
+}
+
+func (s MessageService) getId() int {
+	id := 0
+	s.clients.Range(func(_, _ any) bool {
+		id++
+		return true
+	})
+	return id
 }
