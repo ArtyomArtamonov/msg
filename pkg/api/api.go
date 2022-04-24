@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	pb "github.com/ArtyomArtamonov/msg/pkg/api/proto"
+	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -21,9 +22,14 @@ func NewMessageService() *MessageService {
 }
 
 func (s *MessageService) GetMessages(req *emptypb.Empty, srv pb.MessageService_GetMessagesServer) error {
-	s.clients.Store(s.getId(), srv)
+	id := s.getId()
+	s.clients.Store(id, srv)
+
+	logrus.Info("Streaming started with id=", id)
 
 	<-srv.Context().Done()
+
+	logrus.Info("Streaming ended with id=", id)
 
 	return nil
 }
@@ -57,6 +63,7 @@ func (s MessageService) sendMessage(message string, id int) error {
 		Message: message,
 	}
 	err := client.(pb.MessageService_GetMessagesServer).Send(&msg)
+	logrus.Info("Message sent to id=", id)
 	return err
 }
 
