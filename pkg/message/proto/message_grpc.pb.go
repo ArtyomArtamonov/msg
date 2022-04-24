@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.2.0
 // - protoc             v3.6.1
-// source: proto/messages.proto
+// source: proto/message.proto
 
 package api
 
@@ -24,7 +24,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type MessageServiceClient interface {
 	GetMessages(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (MessageService_GetMessagesClient, error)
-	SendMessage(ctx context.Context, in *Message, opts ...grpc.CallOption) (*Status, error)
+	SendMessage(ctx context.Context, in *MessageRequest, opts ...grpc.CallOption) (*Status, error)
 }
 
 type messageServiceClient struct {
@@ -51,7 +51,7 @@ func (c *messageServiceClient) GetMessages(ctx context.Context, in *empty.Empty,
 }
 
 type MessageService_GetMessagesClient interface {
-	Recv() (*Message, error)
+	Recv() (*MessageResponse, error)
 	grpc.ClientStream
 }
 
@@ -59,15 +59,15 @@ type messageServiceGetMessagesClient struct {
 	grpc.ClientStream
 }
 
-func (x *messageServiceGetMessagesClient) Recv() (*Message, error) {
-	m := new(Message)
+func (x *messageServiceGetMessagesClient) Recv() (*MessageResponse, error) {
+	m := new(MessageResponse)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
 	return m, nil
 }
 
-func (c *messageServiceClient) SendMessage(ctx context.Context, in *Message, opts ...grpc.CallOption) (*Status, error) {
+func (c *messageServiceClient) SendMessage(ctx context.Context, in *MessageRequest, opts ...grpc.CallOption) (*Status, error) {
 	out := new(Status)
 	err := c.cc.Invoke(ctx, "/api.MessageService/SendMessage", in, out, opts...)
 	if err != nil {
@@ -81,7 +81,7 @@ func (c *messageServiceClient) SendMessage(ctx context.Context, in *Message, opt
 // for forward compatibility
 type MessageServiceServer interface {
 	GetMessages(*empty.Empty, MessageService_GetMessagesServer) error
-	SendMessage(context.Context, *Message) (*Status, error)
+	SendMessage(context.Context, *MessageRequest) (*Status, error)
 	mustEmbedUnimplementedMessageServiceServer()
 }
 
@@ -92,7 +92,7 @@ type UnimplementedMessageServiceServer struct {
 func (UnimplementedMessageServiceServer) GetMessages(*empty.Empty, MessageService_GetMessagesServer) error {
 	return status.Errorf(codes.Unimplemented, "method GetMessages not implemented")
 }
-func (UnimplementedMessageServiceServer) SendMessage(context.Context, *Message) (*Status, error) {
+func (UnimplementedMessageServiceServer) SendMessage(context.Context, *MessageRequest) (*Status, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SendMessage not implemented")
 }
 func (UnimplementedMessageServiceServer) mustEmbedUnimplementedMessageServiceServer() {}
@@ -117,7 +117,7 @@ func _MessageService_GetMessages_Handler(srv interface{}, stream grpc.ServerStre
 }
 
 type MessageService_GetMessagesServer interface {
-	Send(*Message) error
+	Send(*MessageResponse) error
 	grpc.ServerStream
 }
 
@@ -125,12 +125,12 @@ type messageServiceGetMessagesServer struct {
 	grpc.ServerStream
 }
 
-func (x *messageServiceGetMessagesServer) Send(m *Message) error {
+func (x *messageServiceGetMessagesServer) Send(m *MessageResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
 func _MessageService_SendMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Message)
+	in := new(MessageRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -142,7 +142,7 @@ func _MessageService_SendMessage_Handler(srv interface{}, ctx context.Context, d
 		FullMethod: "/api.MessageService/SendMessage",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MessageServiceServer).SendMessage(ctx, req.(*Message))
+		return srv.(MessageServiceServer).SendMessage(ctx, req.(*MessageRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -166,5 +166,5 @@ var MessageService_ServiceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
-	Metadata: "proto/messages.proto",
+	Metadata: "proto/message.proto",
 }

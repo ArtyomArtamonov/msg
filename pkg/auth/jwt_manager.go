@@ -60,3 +60,4 @@ func (m *JWTManager) Verify(accessToken string) (*UserClaims, error) {
 
 	return claims, nil
 }
+

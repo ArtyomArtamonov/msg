@@ -26,7 +26,7 @@ func (i *AuthInterceptor) Unary() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{},
 		info *grpc.UnaryServerInfo,
 		handler grpc.UnaryHandler) (interface{}, error) {
-		logrus.Info("Unary interceptor here: ", info.FullMethod)
+		logrus.Trace("Unary auth interceptor here: ", info.FullMethod)
 
 		err := i.authorize(ctx, info.FullMethod)
 		if err != nil {
@@ -41,7 +41,7 @@ func (i *AuthInterceptor) Stream() grpc.StreamServerInterceptor {
 	return func(srv interface{}, ss grpc.ServerStream,
 		info *grpc.StreamServerInfo,
 		handler grpc.StreamHandler) error {
-		logrus.Info("Streaming interceptor here: ", info.FullMethod)
+		logrus.Trace("Streaming auth interceptor here: ", info.FullMethod)
 
 		err := i.authorize(ss.Context(), info.FullMethod)
 		if err != nil {
@@ -59,20 +59,9 @@ func (i *AuthInterceptor) authorize(ctx context.Context, method string) error {
 		return nil
 	}
 
-	md, ok := metadata.FromIncomingContext(ctx)
-	if !ok {
-		return status.Error(codes.Unauthenticated, "metadata is not provided")
-	}
-
-	values := md["authorization"]
-	if len(values) == 0 {
-		return status.Error(codes.Unauthenticated, "authorization token is not provided")
-	}
-
-	accessToken := values[0]
-	claims, err := i.jwtManager.Verify(accessToken)
+	claims, err := GetAndVerifyClaimsFromContext(ctx, i.jwtManager)
 	if err != nil {
-		return status.Errorf(codes.Unauthenticated, "access token is invalid: %v", err)
+		return err
 	}
 
 	for _, role := range accessibleRoles {
@@ -82,4 +71,23 @@ func (i *AuthInterceptor) authorize(ctx context.Context, method string) error {
 	}
 
 	return status.Errorf(codes.PermissionDenied, "user does not have permission")
+}
+
+func GetAndVerifyClaimsFromContext(ctx context.Context, jwtManager *JWTManager) (*UserClaims, error) {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return nil, status.Error(codes.Unauthenticated, "metadata is not provided")
+	}
+
+	values := md["authorization"]
+	if len(values) == 0 {
+		return nil, status.Error(codes.Unauthenticated, "authorization token is not provided")
+	}
+
+	accessToken := values[0]
+	claims, err := jwtManager.Verify(accessToken)
+	if err != nil {
+		return nil, status.Errorf(codes.Unauthenticated, "access token is invalid: %v", err)
+	}
+	return claims, nil
 }

@@ -6,12 +6,12 @@ import (
 	"strconv"
 	"time"
 
-	apiPb "github.com/ArtyomArtamonov/msg/pkg/api/proto"
 	authPb "github.com/ArtyomArtamonov/msg/pkg/auth/proto"
-	"github.com/joho/godotenv"
+	messagePb "github.com/ArtyomArtamonov/msg/pkg/message/proto"
 
-	"github.com/ArtyomArtamonov/msg/pkg/api"
 	"github.com/ArtyomArtamonov/msg/pkg/auth"
+	"github.com/ArtyomArtamonov/msg/pkg/message"
+	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -20,6 +20,7 @@ import (
 const HOST = ":8000"
 
 func main() {
+	logrus.SetFormatter(&logrus.JSONFormatter{})
 	err := godotenv.Load("../.env")
 	if err != nil {
 		logrus.Fatal("Error loading .env file: ", err)
@@ -38,13 +39,11 @@ func main() {
 }
 
 func createAndPrepareGRPCServer() *grpc.Server {
-	apiServer := api.NewMessageService()
-
 	jwtDurationMin, err := strconv.Atoi(os.Getenv("JWT_DURATION_MIN"))
 	if err != nil {
 		logrus.Fatal("Could not get JWT_DURATION_MIN env variable (should be a number of minutes token expiration time)")
 	}
-
+	
 	jwtSecret := os.Getenv("JWT_SECRET")
 
 	userStore := auth.NewInMemoryUserStore()
@@ -63,7 +62,9 @@ func createAndPrepareGRPCServer() *grpc.Server {
 		userStore.Save(admin)
 	}
 	jwtManager := auth.NewJWTManager(jwtSecret, time.Minute*time.Duration(jwtDurationMin))
+
 	authServer := auth.NewAuthService(userStore, jwtManager)
+	messageServer := message.NewMessageService(jwtManager)
 
 	authInterceptor := auth.NewAuthInterceptor(jwtManager, accessibleRoles())
 	grpcServer := grpc.NewServer(
@@ -71,7 +72,7 @@ func createAndPrepareGRPCServer() *grpc.Server {
 		grpc.StreamInterceptor(authInterceptor.Stream()),
 	)
 
-	apiPb.RegisterMessageServiceServer(grpcServer, apiServer)
+	messagePb.RegisterMessageServiceServer(grpcServer, messageServer)
 	authPb.RegisterAuthServiceServer(grpcServer, authServer)
 
 	reflection.Register(grpcServer)
@@ -80,8 +81,8 @@ func createAndPrepareGRPCServer() *grpc.Server {
 }
 
 func accessibleRoles() map[string][]string {
-	const authService = "/api.MessageService/"
-	const messageService = "/api.MessageService/"
+	const authService = "/message.MessageService/"
+	const messageService = "/message.MessageService/"
 
 	return map[string][]string{
 		messageService + "SendMessage": {"admin", "user"},
