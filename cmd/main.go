@@ -17,22 +17,22 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
-const HOST = ":8000"
-
 func main() {
 	logrus.SetFormatter(&logrus.JSONFormatter{})
 	err := godotenv.Load("../.env")
 	if err != nil {
 		logrus.Fatal("Error loading .env file: ", err)
 	}
-	lis, err := net.Listen("tcp", HOST)
+
+	host := os.Getenv("HOST")
+	lis, err := net.Listen("tcp", host)
 	if err != nil {
 		logrus.Fatal(err.Error())
 	}
 
 	grpcServer := createAndPrepareGRPCServer()
 
-	logrus.Info("Starting grpc server on ", HOST)
+	logrus.Info("Starting grpc server on ", host)
 	if err := grpcServer.Serve(lis); err != nil {
 		logrus.Fatal(err.Error())
 	}
@@ -43,7 +43,7 @@ func createAndPrepareGRPCServer() *grpc.Server {
 	if err != nil {
 		logrus.Fatal("Could not get JWT_DURATION_MIN env variable (should be a number of minutes token expiration time)")
 	}
-	
+
 	jwtSecret := os.Getenv("JWT_SECRET")
 
 	userStore := auth.NewInMemoryUserStore()

@@ -1,10 +1,10 @@
 syntax = "proto3";
 
-package api;
+package message;
 
 import "google/protobuf/empty.proto";
 
-option go_package = "github.com/ArtyomArtamonov/msg/pkg/api";
+option go_package = "github.com/ArtyomArtamonov/msg/pkg/message";
 
 message MessageResponse {
     string message = 1;
