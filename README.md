@@ -28,6 +28,18 @@ HOST="192.168.0.1:1234"
 
 JWT_SECRET="s3cr3t"
 JWT_DURATION_MIN=15
+
+POSTGRES_DB="dbname"
+POSTGRES_USER="dbuser"
+POSTGRES_PASSWORD="dbuserpassword"
+
+PGADMIN_DEFAULT_EMAIL="email"
+PGADMIN_DEFAULT_PASSWORD="password"
+PGADMIN_CONFIG_SERVER_MODE="False"
 ```
 
+## Run
 
+```console
+$ docker-compose up -d
+```

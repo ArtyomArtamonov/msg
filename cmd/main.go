@@ -19,6 +19,8 @@ import (
 
 func main() {
 	logrus.SetFormatter(&logrus.JSONFormatter{})
+	logrus.SetLevel(logrus.TraceLevel)
+	
 	err := godotenv.Load("../.env")
 	if err != nil {
 		logrus.Fatal("Error loading .env file: ", err)
