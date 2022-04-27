@@ -3,7 +3,7 @@ package message
 import (
 	"context"
 	"fmt"
-	"sync"
+	"time"
 
 	"github.com/ArtyomArtamonov/msg/pkg/auth"
 	pb "github.com/ArtyomArtamonov/msg/pkg/message/proto"
@@ -16,15 +16,14 @@ import (
 type MessageServer struct {
 	pb.UnimplementedMessageServiceServer
 
-	mutex            sync.RWMutex
-	connectedClients map[string]pb.MessageService_GetMessagesServer
-	jwtManager       *auth.JWTManager
+	sessionStore SessionStore
+	jwtManager   *auth.JWTManager
 }
 
-func NewMessageService(jwtManager *auth.JWTManager) *MessageServer {
+func NewMessageService(jwtManager *auth.JWTManager, sessionStore SessionStore) *MessageServer {
 	return &MessageServer{
-		connectedClients:                  map[string]pb.MessageService_GetMessagesServer{},
-		jwtManager:                        jwtManager,
+		sessionStore: sessionStore,
+		jwtManager:   jwtManager,
 	}
 }
 
@@ -37,12 +36,28 @@ func (s *MessageServer) GetMessages(req *emptypb.Empty, srv pb.MessageService_Ge
 
 	id := claims.Username
 
-	s.mutex.Lock()
-	s.connectedClients[id] = srv
-	s.mutex.Unlock()
+	done := make(chan struct{})
+	session := Session{
+		connection: srv,
+		id:         claims.Username,
+		expires:    time.Duration(claims.ExpiresAt),
+		done:       done,
+	}
+	err = s.sessionStore.Add(&session)
+	if err != nil {
+		return status.Errorf(codes.Internal, err.Error())
+	}
 
 	logrus.Info("Streaming started with id=", id)
-	<-ctx.Done()
+	select {
+	case <-done:
+		return status.Error(codes.Unauthenticated, "JWT is exipred")
+	case <-ctx.Done():
+	}
+	err = s.sessionStore.Delete(id)
+	if err != nil {
+		logrus.Warn(err)
+	}
 	logrus.Info("Streaming ended with id=", id)
 	return nil
 }
@@ -65,19 +80,26 @@ func (s *MessageServer) SendMessage(ctx context.Context, req *pb.MessageRequest)
 }
 
 func (s *MessageServer) sendMessage(message string, to string, from string) error {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	client, ok := s.connectedClients[to]
-	if !ok {
-		return fmt.Errorf("could not read from map with id %s", to)
-	}
-
 	msg := pb.MessageResponse{
 		From:    from,
 		Message: message,
 	}
-	err := client.Send(&msg)
+	err := s.sessionStore.Send(to, &msg)
+	status, ok := status.FromError(err)
+	if ok {
+		if status.Code() == codes.Unavailable {
+			// Client is not connected, no session created. Send push notification
+			logrus.Warn("User was not connected. Sending PUSH notification")
+		} else if status.Code() == codes.Unauthenticated {
+			// JWT token is bad. Remove session
+			s.sessionStore.Delete(to)
+		}
+	} else {
+		// Could not send message to client due to unknown error
+		logrus.Error(err)
+	}
+
+	// TODO: Save message to database
 	logrus.Info("Message sent to id=", to)
 	return err
 }

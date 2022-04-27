@@ -64,9 +64,10 @@ func createAndPrepareGRPCServer() *grpc.Server {
 		userStore.Save(admin)
 	}
 	jwtManager := auth.NewJWTManager(jwtSecret, time.Minute*time.Duration(jwtDurationMin))
+	sessionStore := message.NewInMemorySessionStore()
 
 	authServer := auth.NewAuthService(userStore, jwtManager)
-	messageServer := message.NewMessageService(jwtManager)
+	messageServer := message.NewMessageService(jwtManager, sessionStore)
 
 	authInterceptor := auth.NewAuthInterceptor(jwtManager, accessibleRoles())
 	grpcServer := grpc.NewServer(
