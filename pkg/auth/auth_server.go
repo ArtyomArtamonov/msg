@@ -25,7 +25,7 @@ func NewAuthService(userStore UserStore, jwtManager *JWTManager) *AuthServer {
 func (s *AuthServer) Login(ctx context.Context, req *pb.LoginRequest) (*pb.TokenResponse, error) {
 	user, err := s.userStore.Find(req.Username)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "cannot find user %v", err)
+		return nil, status.Errorf(codes.NotFound, "incorrect username or password")
 	}
 
 	if user == nil || !user.IsCorrectPassword(req.Password) {

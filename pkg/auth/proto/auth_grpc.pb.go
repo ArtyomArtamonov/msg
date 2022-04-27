@@ -4,7 +4,7 @@
 // - protoc             v3.6.1
 // source: proto/auth.proto
 
-package service
+package auth
 
 import (
 	context "context"
@@ -35,7 +35,7 @@ func NewAuthServiceClient(cc grpc.ClientConnInterface) AuthServiceClient {
 
 func (c *authServiceClient) Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*TokenResponse, error) {
 	out := new(TokenResponse)
-	err := c.cc.Invoke(ctx, "/service.AuthService/Login", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/auth.AuthService/Login", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +80,7 @@ func _AuthService_Login_Handler(srv interface{}, ctx context.Context, dec func(i
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/service.AuthService/Login",
+		FullMethod: "/auth.AuthService/Login",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AuthServiceServer).Login(ctx, req.(*LoginRequest))
@@ -92,7 +92,7 @@ func _AuthService_Login_Handler(srv interface{}, ctx context.Context, dec func(i
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var AuthService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "service.AuthService",
+	ServiceName: "auth.AuthService",
 	HandlerType: (*AuthServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

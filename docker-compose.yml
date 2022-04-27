@@ -13,6 +13,7 @@ services:
       - .:/app
     networks:
       - backend
+
   database:
     image: postgres
     restart: always
@@ -28,6 +29,7 @@ services:
       - 5432:5432
     networks:
       - backend
+      
   pgadmin:
     container_name: pgadmin_container
     image: dpage/pgadmin4

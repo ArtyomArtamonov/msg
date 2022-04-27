@@ -4,7 +4,7 @@
 // - protoc             v3.6.1
 // source: proto/message.proto
 
-package api
+package message
 
 import (
 	context "context"
@@ -36,7 +36,7 @@ func NewMessageServiceClient(cc grpc.ClientConnInterface) MessageServiceClient {
 }
 
 func (c *messageServiceClient) GetMessages(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (MessageService_GetMessagesClient, error) {
-	stream, err := c.cc.NewStream(ctx, &MessageService_ServiceDesc.Streams[0], "/api.MessageService/GetMessages", opts...)
+	stream, err := c.cc.NewStream(ctx, &MessageService_ServiceDesc.Streams[0], "/message.MessageService/GetMessages", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +69,7 @@ func (x *messageServiceGetMessagesClient) Recv() (*MessageResponse, error) {
 
 func (c *messageServiceClient) SendMessage(ctx context.Context, in *MessageRequest, opts ...grpc.CallOption) (*Status, error) {
 	out := new(Status)
-	err := c.cc.Invoke(ctx, "/api.MessageService/SendMessage", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/message.MessageService/SendMessage", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -139,7 +139,7 @@ func _MessageService_SendMessage_Handler(srv interface{}, ctx context.Context, d
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/api.MessageService/SendMessage",
+		FullMethod: "/message.MessageService/SendMessage",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MessageServiceServer).SendMessage(ctx, req.(*MessageRequest))
@@ -151,7 +151,7 @@ func _MessageService_SendMessage_Handler(srv interface{}, ctx context.Context, d
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var MessageService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "api.MessageService",
+	ServiceName: "message.MessageService",
 	HandlerType: (*MessageServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
