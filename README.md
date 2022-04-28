@@ -6,16 +6,14 @@ Msg is gRPC-based backend for messaging written in golang.
 
 Future goals:
 
-- Authentication and authorization with JWT and refresh tokens
-- PostgreSQL as persistance storage
 - Implement message service which will allow users to send messages to chat rooms
 - Unit tests and github workflow
 
 Already achieved:
 
-- JWT access token workflow
+- Authentication and authorization with JWT and refresh tokens
+- PostgreSQL as persistance storage
 - gRPC and protobuf service creation with help of Makefile and well-prepared code organization
-- UserStore intreface for further persistent storage implementation
 
 ## Env variables
 
