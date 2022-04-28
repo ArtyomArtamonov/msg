@@ -1,6 +1,8 @@
 package main
 
 import (
+	"database/sql"
+	"fmt"
 	"net"
 	"os"
 	"strconv"
@@ -17,10 +19,12 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
+var Db *sql.DB
+
 func main() {
 	logrus.SetFormatter(&logrus.JSONFormatter{})
 	logrus.SetLevel(logrus.TraceLevel)
-	
+
 	err := godotenv.Load("../.env")
 	if err != nil {
 		logrus.Fatal("Error loading .env file: ", err)
@@ -31,6 +35,18 @@ func main() {
 	if err != nil {
 		logrus.Fatal(err.Error())
 	}
+
+	connectionString := fmt.Sprintf(
+		"host=database port=5432 sslmode=disable dbname=%s user=%s password=%s",
+		os.Getenv("POSTGRES_DB"), os.Getenv("POSTGRES_USER"), os.Getenv("POSTGRES_PASSWORD"))
+	Db, err = sql.Open("postgres", connectionString)
+	if err != nil {
+		logrus.Fatal("could not connect to database")
+	}
+	if err := Db.Ping(); err != nil {
+		logrus.Fatalf("could not ping database: %v", err)
+	}
+	defer Db.Close()
 
 	grpcServer := createAndPrepareGRPCServer()
 
@@ -46,30 +62,36 @@ func createAndPrepareGRPCServer() *grpc.Server {
 		logrus.Fatal("Could not get JWT_DURATION_MIN env variable (should be a number of minutes token expiration time)")
 	}
 
+	refreshDurationDays, err := strconv.Atoi(os.Getenv("REFRESH_DURATION_DAYS"))
+	if err != nil {
+		logrus.Fatal("Could not get REFRESH_DURATION_DAYS env variable (should be a number of days refresh token expiration time)")
+	}
+
 	jwtSecret := os.Getenv("JWT_SECRET")
 
 	// AUTH
-	userStore := auth.NewPostgresUserStore(os.Getenv("POSTGRES_DB"), os.Getenv("POSTGRES_USER"), os.Getenv("POSTGRES_PASSWORD"))
+	userStore := auth.NewPostgresUserStore(Db)
+	refreshTokenStore := auth.NewRefreshTokenPostgresStore(Db)
 	// DEBUG PURPOSE BLOCK
 	{
-		user, err := auth.NewUser("user", "user", "user")
+		user, err := auth.NewUser("user", "user", auth.USER_ROLE)
 		if err != nil {
-			logrus.Fatal(err)
+			logrus.Error(err)
 		}
 		if err := userStore.Save(user); err != nil {
-			logrus.Fatal(err)
+			logrus.Error(err)
 		}
 
-		admin, err := auth.NewUser("admin", "admin", "admin")
+		admin, err := auth.NewUser("admin", "admin", auth.ADMIN_ROLE)
 		if err != nil {
-			logrus.Fatal(err)
+			logrus.Error(err)
 		}
 		if err := userStore.Save(admin); err != nil {
-			logrus.Fatal(err)
+			logrus.Error(err)
 		}
 	}
-	jwtManager := auth.NewJWTManager(jwtSecret, time.Minute*time.Duration(jwtDurationMin))
-	authServer := auth.NewAuthService(userStore, jwtManager)
+	jwtManager := auth.NewJWTManager(jwtSecret, time.Minute*time.Duration(jwtDurationMin), time.Hour*24*time.Duration(refreshDurationDays))
+	authServer := auth.NewAuthService(userStore, refreshTokenStore, jwtManager)
 	authInterceptor := auth.NewAuthInterceptor(jwtManager, accessibleRoles())
 
 	// MESSAGE
@@ -94,7 +116,7 @@ func accessibleRoles() map[string][]string {
 	const messageService = "/message.MessageService/"
 
 	return map[string][]string{
-		messageService + "SendMessage": {"admin", "user"},
-		messageService + "GetMessages": {"admin", "user"},
+		messageService + "SendMessage": {auth.ADMIN_ROLE, auth.USER_ROLE},
+		messageService + "GetMessages": {auth.ADMIN_ROLE, auth.USER_ROLE},
 	}
 }

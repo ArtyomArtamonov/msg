@@ -5,6 +5,11 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+const (
+	ADMIN_ROLE = "admin"
+	USER_ROLE  = "user"
+)
+
 type User struct {
 	Id           uuid.UUID
 	Username     string

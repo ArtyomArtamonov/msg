@@ -24,10 +24,12 @@ Create .env file and put it in a project root
 .env file has to contain
 
 ```env
-HOST="192.168.0.1:1234"
+HOST="192.168.0.2:1234"
 
 JWT_SECRET="s3cr3t"
 JWT_DURATION_MIN=15
+REFRESH_DURATION_DAYS=90
+
 
 POSTGRES_DB="dbname"
 POSTGRES_USER="dbuser"

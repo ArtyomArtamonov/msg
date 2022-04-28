@@ -7,6 +7,7 @@ import (
 
 	"github.com/ArtyomArtamonov/msg/pkg/auth"
 	pb "github.com/ArtyomArtamonov/msg/pkg/message/proto"
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -34,12 +35,15 @@ func (s *MessageServer) GetMessages(req *emptypb.Empty, srv pb.MessageService_Ge
 		return err
 	}
 
-	id := claims.Username
+	id, err := uuid.Parse(claims.Id)
+	if err != nil {
+		return status.Error(codes.InvalidArgument, "could not parse uuid")
+	}
 
 	done := make(chan struct{})
 	session := Session{
 		connection: srv,
-		id:         claims.Username,
+		id:         id,
 		expires:    time.Duration(claims.ExpiresAt),
 		done:       done,
 	}
@@ -68,9 +72,9 @@ func (s *MessageServer) SendMessage(ctx context.Context, req *pb.MessageRequest)
 		return nil, err
 	}
 
-	err = s.sendMessage(req.Message, req.To, claims.Username)
+	err = s.sendMessage(req.Message, req.To, claims.Id)
 	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "user with specified id was not found: %w", err)
+		return nil, status.Errorf(codes.InvalidArgument, "user with specified id was not found: %v", err)
 	}
 
 	return &pb.Status{
@@ -80,11 +84,21 @@ func (s *MessageServer) SendMessage(ctx context.Context, req *pb.MessageRequest)
 }
 
 func (s *MessageServer) sendMessage(message string, to string, from string) error {
+	if _, err := uuid.Parse(from); err != nil {
+		return fmt.Errorf("could not parse uuid from %s", from)
+	}
+
 	msg := pb.MessageResponse{
 		From:    from,
 		Message: message,
 	}
-	err := s.sessionStore.Send(to, &msg)
+
+	idTo, err := uuid.Parse(to)
+	if err != nil {
+		return fmt.Errorf("could not parse uuid to %s", to)
+	}
+
+	err = s.sessionStore.Send(idTo, &msg)
 	status, ok := status.FromError(err)
 	if ok {
 		if status.Code() == codes.Unavailable {
@@ -92,7 +106,7 @@ func (s *MessageServer) sendMessage(message string, to string, from string) erro
 			logrus.Warn("User was not connected. Sending PUSH notification")
 		} else if status.Code() == codes.Unauthenticated {
 			// JWT token is bad. Remove session
-			s.sessionStore.Delete(to)
+			s.sessionStore.Delete(idTo)
 		}
 	} else {
 		// Could not send message to client due to unknown error

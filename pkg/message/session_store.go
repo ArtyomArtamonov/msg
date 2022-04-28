@@ -5,25 +5,26 @@ import (
 	"time"
 
 	pb "github.com/ArtyomArtamonov/msg/pkg/message/proto"
+	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 type SessionStore interface {
 	Add(*Session) error
-	Send(string, *pb.MessageResponse) error
-	Delete(id string) error
+	Send(uuid.UUID, *pb.MessageResponse) error
+	Delete(id uuid.UUID) error
 }
 
 type InMemorySessionStore struct {
 	mutex    sync.Mutex
-	sessions map[string]*Session
+	sessions map[uuid.UUID]*Session
 }
 
 func NewInMemorySessionStore() *InMemorySessionStore {
 	return &InMemorySessionStore{
 		mutex:    sync.Mutex{},
-		sessions: map[string]*Session{},
+		sessions: make(map[uuid.UUID]*Session),
 	}
 }
 
@@ -36,7 +37,7 @@ func (s *InMemorySessionStore) Add(session *Session) error {
 	return nil
 }
 
-func (s *InMemorySessionStore) Send(id string, message *pb.MessageResponse) error {
+func (s *InMemorySessionStore) Send(id uuid.UUID, message *pb.MessageResponse) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -54,17 +55,17 @@ func (s *InMemorySessionStore) Send(id string, message *pb.MessageResponse) erro
 	return err
 }
 
-func (s *InMemorySessionStore) Delete(id string) error {
+func (s *InMemorySessionStore) Delete(id uuid.UUID) error {
 	s.mutex.Lock()
-	defer s.mutex.Unlock()
 
 	session, ok := s.sessions[id]
 	if !ok {
 		return status.Error(codes.NotFound, "User with specified id is not present")
 	}
 
-	session.done <- struct{}{}
+	s.mutex.Unlock()
 	delete(s.sessions, id)
-
+	
+	session.done <- struct{}{}
 	return nil
 }
