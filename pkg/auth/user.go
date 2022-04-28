@@ -1,8 +1,12 @@
 package auth
 
-import "golang.org/x/crypto/bcrypt"
+import (
+	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
+)
 
 type User struct {
+	Id           uuid.UUID
 	Username     string
 	PasswordHash string
 	Role         string
@@ -14,7 +18,10 @@ func NewUser(username, password, role string) (*User, error) {
 		return nil, err
 	}
 
+	id := uuid.New()
+
 	return &User{
+		Id:           id,
 		Username:     username,
 		PasswordHash: hashedPassword,
 		Role:         role,
@@ -28,6 +35,7 @@ func (u *User) IsCorrectPassword(password string) bool {
 
 func (u *User) Clone() *User {
 	return &User{
+		Id:           u.Id,
 		Username:     u.Username,
 		PasswordHash: u.PasswordHash,
 		Role:         u.Role,

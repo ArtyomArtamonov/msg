@@ -30,6 +30,16 @@ services:
       - 5432:5432
     networks:
       - backend
+  
+  migrate:
+    image: migrate/migrate
+    networks:
+      - backend
+    volumes:
+      - ./migrations:/migrations
+    command: ["-path", "/migrations", "-database",  "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}?sslmode=disable", "up"]
+    links: 
+      - database
       
   pgadmin:
     container_name: pgadmin_container

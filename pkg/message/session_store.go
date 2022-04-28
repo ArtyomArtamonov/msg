@@ -45,7 +45,7 @@ func (s *InMemorySessionStore) Send(id string, message *pb.MessageResponse) erro
 		return status.Errorf(codes.Unavailable, "User %s is not connected to session", id)
 	}
 
-	if session.expires > time.Duration(time.Now().Unix()) {
+	if time.Duration(time.Now().Unix()) >= session.expires {
 		return status.Errorf(codes.Unauthenticated, "JWT is expired")
 	}
 

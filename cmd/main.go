@@ -48,28 +48,34 @@ func createAndPrepareGRPCServer() *grpc.Server {
 
 	jwtSecret := os.Getenv("JWT_SECRET")
 
-	userStore := auth.NewInMemoryUserStore()
+	// AUTH
+	userStore := auth.NewPostgresUserStore(os.Getenv("POSTGRES_DB"), os.Getenv("POSTGRES_USER"), os.Getenv("POSTGRES_PASSWORD"))
 	// DEBUG PURPOSE BLOCK
 	{
 		user, err := auth.NewUser("user", "user", "user")
 		if err != nil {
-			logrus.Fatal("Could not create test user")
+			logrus.Fatal(err)
 		}
-		userStore.Save(user)
+		if err := userStore.Save(user); err != nil {
+			logrus.Fatal(err)
+		}
 
 		admin, err := auth.NewUser("admin", "admin", "admin")
 		if err != nil {
-			logrus.Fatal("Could not create test admin")
+			logrus.Fatal(err)
 		}
-		userStore.Save(admin)
+		if err := userStore.Save(admin); err != nil {
+			logrus.Fatal(err)
+		}
 	}
 	jwtManager := auth.NewJWTManager(jwtSecret, time.Minute*time.Duration(jwtDurationMin))
-	sessionStore := message.NewInMemorySessionStore()
-
 	authServer := auth.NewAuthService(userStore, jwtManager)
+	authInterceptor := auth.NewAuthInterceptor(jwtManager, accessibleRoles())
+
+	// MESSAGE
+	sessionStore := message.NewInMemorySessionStore()
 	messageServer := message.NewMessageService(jwtManager, sessionStore)
 
-	authInterceptor := auth.NewAuthInterceptor(jwtManager, accessibleRoles())
 	grpcServer := grpc.NewServer(
 		grpc.UnaryInterceptor(authInterceptor.Unary()),
 		grpc.StreamInterceptor(authInterceptor.Stream()),
