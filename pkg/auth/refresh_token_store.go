@@ -8,7 +8,7 @@ import (
 
 type RefreshTokenStore interface {
 	Add(token *RefreshToken) error
-	Delete(userId uuid.UUID) error
+	Delete(token uuid.UUID) error
 	Get(token uuid.UUID) (*RefreshToken, error)
 }
 
@@ -23,20 +23,20 @@ func NewRefreshTokenPostgresStore(db *sql.DB) *RefreshTokenPostgresStore {
 }
 
 func (s *RefreshTokenPostgresStore) Add(token *RefreshToken) error {
-	row := s.db.QueryRow("INSERT INTO refresh_tokens(token, user_id, expires_at, issued_at) VALUES($1, $2, $3, $4)",
+	_, err := s.db.Exec("INSERT INTO refresh_tokens(token, user_id, expires_at, issued_at) VALUES($1, $2, $3, $4)",
 		token.Token, token.UserId, token.ExpiresAt, token.IssuedAt)
 
-	if err := row.Err(); err != nil {
+	if err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (s *RefreshTokenPostgresStore) Delete(userId uuid.UUID) error {
-	row := s.db.QueryRow("DELETE FROM refresh_tokens WHERE token=$1", userId)
+func (s *RefreshTokenPostgresStore) Delete(token uuid.UUID) error {
+	_, err := s.db.Exec("DELETE FROM refresh_tokens WHERE token=$1", token)
 
-	if err := row.Err(); err != nil {
+	if err != nil {
 		return err
 	}
 
@@ -51,7 +51,9 @@ func (s *RefreshTokenPostgresStore) Get(token uuid.UUID) (*RefreshToken, error) 
 	}
 
 	refreshToken := &RefreshToken{}
-	row.Scan(&refreshToken.Token, &refreshToken.UserId, &refreshToken.ExpiresAt, &refreshToken.IssuedAt)
+	if err := row.Scan(&refreshToken.Token, &refreshToken.UserId, &refreshToken.ExpiresAt, &refreshToken.IssuedAt); err != nil {
+		return nil, err
+	}
 
 	return refreshToken, nil
 }
