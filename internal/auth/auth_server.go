@@ -5,7 +5,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	pb "github.com/ArtyomArtamonov/msg/pkg/auth/proto"
+	pb "github.com/ArtyomArtamonov/msg/internal/auth/proto"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"

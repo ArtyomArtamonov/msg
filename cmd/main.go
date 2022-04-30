@@ -8,18 +8,16 @@ import (
 	"strconv"
 	"time"
 
-	authPb "github.com/ArtyomArtamonov/msg/pkg/auth/proto"
-	messagePb "github.com/ArtyomArtamonov/msg/pkg/message/proto"
+	authPb "github.com/ArtyomArtamonov/msg/internal/auth/proto"
+	messagePb "github.com/ArtyomArtamonov/msg/internal/message/proto"
 
-	"github.com/ArtyomArtamonov/msg/pkg/auth"
-	"github.com/ArtyomArtamonov/msg/pkg/message"
+	"github.com/ArtyomArtamonov/msg/internal/auth"
+	"github.com/ArtyomArtamonov/msg/internal/message"
 	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
-
-var Db *sql.DB
 
 func main() {
 	logrus.SetFormatter(&logrus.JSONFormatter{})
@@ -39,16 +37,16 @@ func main() {
 	connectionString := fmt.Sprintf(
 		"host=database port=5432 sslmode=disable dbname=%s user=%s password=%s",
 		os.Getenv("POSTGRES_DB"), os.Getenv("POSTGRES_USER"), os.Getenv("POSTGRES_PASSWORD"))
-	Db, err = sql.Open("postgres", connectionString)
+	db, err := sql.Open("postgres", connectionString)
 	if err != nil {
 		logrus.Fatal("could not connect to database")
 	}
-	if err := Db.Ping(); err != nil {
+	if err := db.Ping(); err != nil {
 		logrus.Fatalf("could not ping database: %v", err)
 	}
-	defer Db.Close()
+	defer db.Close()
 
-	grpcServer := createAndPrepareGRPCServer()
+	grpcServer := createAndPrepareGRPCServer(db)
 
 	logrus.Info("Starting grpc server on ", host)
 	if err := grpcServer.Serve(lis); err != nil {
@@ -56,7 +54,7 @@ func main() {
 	}
 }
 
-func createAndPrepareGRPCServer() *grpc.Server {
+func createAndPrepareGRPCServer(db *sql.DB) *grpc.Server {
 	jwtDurationMin, err := strconv.Atoi(os.Getenv("JWT_DURATION_MIN"))
 	if err != nil {
 		logrus.Fatal("Could not get JWT_DURATION_MIN env variable (should be a number of minutes token expiration time)")
@@ -70,8 +68,8 @@ func createAndPrepareGRPCServer() *grpc.Server {
 	jwtSecret := os.Getenv("JWT_SECRET")
 
 	// AUTH
-	userStore := auth.NewPostgresUserStore(Db)
-	refreshTokenStore := auth.NewRefreshTokenPostgresStore(Db)
+	userStore := auth.NewPostgresUserStore(db)
+	refreshTokenStore := auth.NewRefreshTokenPostgresStore(db)
 	// DEBUG PURPOSE BLOCK
 	{
 		user, err := auth.NewUser("user", "user", auth.USER_ROLE)

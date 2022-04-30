@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ArtyomArtamonov/msg/pkg/auth"
-	pb "github.com/ArtyomArtamonov/msg/pkg/message/proto"
+	"github.com/ArtyomArtamonov/msg/internal/auth"
+	pb "github.com/ArtyomArtamonov/msg/internal/message/proto"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"

@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package auth;
 
-option go_package = "github.com/ArtyomArtamonov/msg/pkg/auth";
+option go_package = "github.com/ArtyomArtamonov/msg/internal/auth";
 
 message LoginRequest {
     string username = 1;

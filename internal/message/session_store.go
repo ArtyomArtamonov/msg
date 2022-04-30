@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	pb "github.com/ArtyomArtamonov/msg/pkg/message/proto"
+	pb "github.com/ArtyomArtamonov/msg/internal/message/proto"
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
