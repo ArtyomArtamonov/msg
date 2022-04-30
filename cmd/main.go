@@ -8,11 +8,13 @@ import (
 	"strconv"
 	"time"
 
-	authPb "github.com/ArtyomArtamonov/msg/internal/auth/proto"
-	messagePb "github.com/ArtyomArtamonov/msg/internal/message/proto"
+	"github.com/ArtyomArtamonov/msg/internal/model"
+	"github.com/ArtyomArtamonov/msg/internal/repository"
+	"github.com/ArtyomArtamonov/msg/internal/server"
+	"github.com/ArtyomArtamonov/msg/internal/service"
 
-	"github.com/ArtyomArtamonov/msg/internal/auth"
-	"github.com/ArtyomArtamonov/msg/internal/message"
+	pb "github.com/ArtyomArtamonov/msg/internal/server/proto"
+
 	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
@@ -68,11 +70,11 @@ func createAndPrepareGRPCServer(db *sql.DB) *grpc.Server {
 	jwtSecret := os.Getenv("JWT_SECRET")
 
 	// AUTH
-	userStore := auth.NewPostgresUserStore(db)
-	refreshTokenStore := auth.NewRefreshTokenPostgresStore(db)
+	userStore := repository.NewPostgresUserStore(db)
+	refreshTokenStore := repository.NewRefreshTokenPostgresStore(db)
 	// DEBUG PURPOSE BLOCK
 	{
-		user, err := auth.NewUser("user", "user", auth.USER_ROLE)
+		user, err := model.NewUser("user", "user", model.USER_ROLE)
 		if err != nil {
 			logrus.Error(err)
 		}
@@ -80,7 +82,7 @@ func createAndPrepareGRPCServer(db *sql.DB) *grpc.Server {
 			logrus.Error(err)
 		}
 
-		admin, err := auth.NewUser("admin", "admin", auth.ADMIN_ROLE)
+		admin, err := model.NewUser("admin", "admin", model.ADMIN_ROLE)
 		if err != nil {
 			logrus.Error(err)
 		}
@@ -88,21 +90,22 @@ func createAndPrepareGRPCServer(db *sql.DB) *grpc.Server {
 			logrus.Error(err)
 		}
 	}
-	jwtManager := auth.NewJWTManager(jwtSecret, time.Minute*time.Duration(jwtDurationMin), time.Hour*24*time.Duration(refreshDurationDays))
-	authServer := auth.NewAuthService(userStore, refreshTokenStore, jwtManager)
-	authInterceptor := auth.NewAuthInterceptor(jwtManager, accessibleRoles())
+	jwtManager := service.NewJWTManager(jwtSecret, time.Minute*time.Duration(jwtDurationMin), time.Hour*24*time.Duration(refreshDurationDays))
+	
+	authServer := server.NewAuthServer(userStore, refreshTokenStore, jwtManager)
+	authInterceptor := server.NewAuthInterceptor(jwtManager, accessibleRoles())
 
 	// MESSAGE
-	sessionStore := message.NewInMemorySessionStore()
-	messageServer := message.NewMessageService(jwtManager, sessionStore)
+	sessionStore := repository.NewInMemorySessionStore()
+	messageServer := server.NewMessageServer(jwtManager, sessionStore)
 
 	grpcServer := grpc.NewServer(
 		grpc.UnaryInterceptor(authInterceptor.Unary()),
 		grpc.StreamInterceptor(authInterceptor.Stream()),
 	)
 
-	messagePb.RegisterMessageServiceServer(grpcServer, messageServer)
-	authPb.RegisterAuthServiceServer(grpcServer, authServer)
+	pb.RegisterMessageServiceServer(grpcServer, messageServer)
+	pb.RegisterAuthServiceServer(grpcServer, authServer)
 
 	reflection.Register(grpcServer)
 
@@ -114,7 +117,7 @@ func accessibleRoles() map[string][]string {
 	const messageService = "/message.MessageService/"
 
 	return map[string][]string{
-		messageService + "SendMessage": {auth.ADMIN_ROLE, auth.USER_ROLE},
-		messageService + "GetMessages": {auth.ADMIN_ROLE, auth.USER_ROLE},
+		messageService + "SendMessage": {model.ADMIN_ROLE, model.USER_ROLE},
+		messageService + "GetMessages": {model.ADMIN_ROLE, model.USER_ROLE},
 	}
 }

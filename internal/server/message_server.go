@@ -1,12 +1,15 @@
-package message
+package server
 
 import (
 	"context"
 	"fmt"
 	"time"
 
-	"github.com/ArtyomArtamonov/msg/internal/auth"
-	pb "github.com/ArtyomArtamonov/msg/internal/message/proto"
+	"github.com/ArtyomArtamonov/msg/internal/model"
+	pb "github.com/ArtyomArtamonov/msg/internal/server/proto"
+
+	"github.com/ArtyomArtamonov/msg/internal/repository"
+	"github.com/ArtyomArtamonov/msg/internal/service"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
@@ -17,11 +20,11 @@ import (
 type MessageServer struct {
 	pb.UnimplementedMessageServiceServer
 
-	sessionStore SessionStore
-	jwtManager   *auth.JWTManager
+	sessionStore repository.SessionStore
+	jwtManager   *service.JWTManager
 }
 
-func NewMessageService(jwtManager *auth.JWTManager, sessionStore SessionStore) *MessageServer {
+func NewMessageServer(jwtManager *service.JWTManager, sessionStore repository.SessionStore) *MessageServer {
 	return &MessageServer{
 		sessionStore: sessionStore,
 		jwtManager:   jwtManager,
@@ -30,7 +33,7 @@ func NewMessageService(jwtManager *auth.JWTManager, sessionStore SessionStore) *
 
 func (s *MessageServer) GetMessages(req *emptypb.Empty, srv pb.MessageService_GetMessagesServer) error {
 	ctx := srv.Context()
-	claims, err := auth.GetAndVerifyClaimsFromContext(ctx, s.jwtManager)
+	claims, err := service.GetAndVerifyClaimsFromContext(ctx, s.jwtManager)
 	if err != nil {
 		return err
 	}
@@ -41,11 +44,11 @@ func (s *MessageServer) GetMessages(req *emptypb.Empty, srv pb.MessageService_Ge
 	}
 
 	done := make(chan struct{})
-	session := Session{
-		connection: srv,
-		id:         id,
-		expires:    time.Duration(claims.ExpiresAt),
-		done:       done,
+	session := model.Session{
+		Connection: srv,
+		Id:         id,
+		Expires:    time.Duration(claims.ExpiresAt),
+		Done:       done,
 	}
 	err = s.sessionStore.Add(&session)
 	if err != nil {
@@ -67,7 +70,7 @@ func (s *MessageServer) GetMessages(req *emptypb.Empty, srv pb.MessageService_Ge
 }
 
 func (s *MessageServer) SendMessage(ctx context.Context, req *pb.MessageRequest) (*pb.Status, error) {
-	claims, err := auth.GetAndVerifyClaimsFromContext(ctx, s.jwtManager)
+	claims, err := service.GetAndVerifyClaimsFromContext(ctx, s.jwtManager)
 	if err != nil {
 		return nil, err
 	}

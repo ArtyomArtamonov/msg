@@ -4,7 +4,7 @@
 // - protoc             v3.6.1
 // source: proto/message.proto
 
-package message
+package proto
 
 import (
 	context "context"

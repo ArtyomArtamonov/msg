@@ -4,7 +4,7 @@ package message;
 
 import "google/protobuf/empty.proto";
 
-option go_package = "github.com/ArtyomArtamonov/msg/internal/message";
+option go_package = "github.com/ArtyomArtamonov/msg/internal/server/proto";
 
 message MessageRequest {
     string to = 1;

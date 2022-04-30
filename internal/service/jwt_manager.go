@@ -1,36 +1,22 @@
-package auth
+package service
 
 import (
+	"context"
 	"fmt"
 	"time"
 
+	"github.com/ArtyomArtamonov/msg/internal/model"
 	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 )
 
 type JWTManager struct {
 	secretKey            string
 	tokenDuration        time.Duration
 	refreshTokenDuration time.Duration
-}
-
-type TokenPair struct {
-	JwtToken     string
-	RefreshToken *RefreshToken
-}
-
-type RefreshToken struct {
-	Token     uuid.UUID
-	UserId    uuid.UUID
-	ExpiresAt time.Time
-	IssuedAt  time.Time
-}
-
-type UserClaims struct {
-	jwt.StandardClaims
-
-	Username string `json:"username"`
-	Role     string `json:"role"`
 }
 
 func NewJWTManager(secretKey string, tokenDuration, refreshTokenDuration time.Duration) *JWTManager {
@@ -41,8 +27,8 @@ func NewJWTManager(secretKey string, tokenDuration, refreshTokenDuration time.Du
 	}
 }
 
-func (m *JWTManager) Generate(user *User) (*TokenPair, error) {
-	claims := UserClaims{
+func (m *JWTManager) Generate(user *model.User) (*model.TokenPair, error) {
+	claims := model.UserClaims{
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(m.tokenDuration).Unix(),
 			IssuedAt:  time.Now().Unix(),
@@ -59,15 +45,15 @@ func (m *JWTManager) Generate(user *User) (*TokenPair, error) {
 		return nil, err
 	}
 
-	tokenPair := &TokenPair{
+	tokenPair := &model.TokenPair{
 		JwtToken:     tokenSigned,
 		RefreshToken: m.NewRefreshToken(user.Id),
 	}
 	return tokenPair, nil
 }
 
-func (m *JWTManager) Verify(accessToken string) (*UserClaims, error) {
-	token, err := jwt.ParseWithClaims(accessToken, &UserClaims{}, func(t *jwt.Token) (interface{}, error) {
+func (m *JWTManager) Verify(accessToken string) (*model.UserClaims, error) {
+	token, err := jwt.ParseWithClaims(accessToken, &model.UserClaims{}, func(t *jwt.Token) (interface{}, error) {
 		_, ok := t.Method.(*jwt.SigningMethodHMAC)
 		if !ok {
 			return nil, fmt.Errorf("unexpected token signing method")
@@ -80,7 +66,7 @@ func (m *JWTManager) Verify(accessToken string) (*UserClaims, error) {
 		return nil, fmt.Errorf("invalid token: %v", err)
 	}
 
-	claims, ok := token.Claims.(*UserClaims)
+	claims, ok := token.Claims.(*model.UserClaims)
 	if !ok {
 		return nil, fmt.Errorf("invalid token claims")
 	}
@@ -88,12 +74,31 @@ func (m *JWTManager) Verify(accessToken string) (*UserClaims, error) {
 	return claims, nil
 }
 
-func (m *JWTManager) NewRefreshToken(userId uuid.UUID) *RefreshToken {
-	token := &RefreshToken{
+func (m *JWTManager) NewRefreshToken(userId uuid.UUID) *model.RefreshToken {
+	token := &model.RefreshToken{
 		Token:     uuid.New(),
 		UserId:    userId,
 		ExpiresAt: time.Now().Add(m.refreshTokenDuration),
 		IssuedAt:  time.Now(),
 	}
 	return token
+}
+
+func GetAndVerifyClaimsFromContext(ctx context.Context, jwtManager *JWTManager) (*model.UserClaims, error) {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return nil, status.Error(codes.Unauthenticated, "metadata is not provided")
+	}
+
+	values := md["authorization"]
+	if len(values) == 0 {
+		return nil, status.Error(codes.Unauthenticated, "authorization token is not provided")
+	}
+
+	accessToken := values[0]
+	claims, err := jwtManager.Verify(accessToken)
+	if err != nil {
+		return nil, status.Errorf(codes.Unauthenticated, "access token is invalid: %v", err)
+	}
+	return claims, nil
 }

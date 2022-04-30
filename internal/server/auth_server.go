@@ -1,11 +1,14 @@
-package auth
+package server
 
 import (
 	"context"
 	"time"
 	"unicode/utf8"
 
-	pb "github.com/ArtyomArtamonov/msg/internal/auth/proto"
+	pb "github.com/ArtyomArtamonov/msg/internal/server/proto"
+	"github.com/ArtyomArtamonov/msg/internal/model"
+	"github.com/ArtyomArtamonov/msg/internal/repository"
+	"github.com/ArtyomArtamonov/msg/internal/service"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
@@ -15,12 +18,12 @@ import (
 type AuthServer struct {
 	pb.UnimplementedAuthServiceServer
 
-	userStore         UserStore
-	refreshTokenStore RefreshTokenStore
-	jwtManager        *JWTManager
+	userStore         repository.UserStore
+	refreshTokenStore repository.RefreshTokenStore
+	jwtManager        *service.JWTManager
 }
 
-func NewAuthService(userStore UserStore, refreshTokenStore RefreshTokenStore, jwtManager *JWTManager) *AuthServer {
+func NewAuthServer(userStore repository.UserStore, refreshTokenStore repository.RefreshTokenStore, jwtManager *service.JWTManager) *AuthServer {
 	return &AuthServer{
 		userStore:         userStore,
 		jwtManager:        jwtManager,
@@ -42,7 +45,7 @@ func (s *AuthServer) Register(ctx context.Context, req *pb.RegisterRequest) (*pb
 		return nil, status.Error(codes.InvalidArgument, "password could not be less than 6 characters")
 	}
 
-	user, err := NewUser(req.Username, req.Password, USER_ROLE)
+	user, err := model.NewUser(req.Username, req.Password, model.USER_ROLE)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}

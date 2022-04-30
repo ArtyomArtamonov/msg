@@ -1,4 +1,4 @@
-package auth
+package server
 
 import (
 	"context"
@@ -6,16 +6,17 @@ import (
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+
+	"github.com/ArtyomArtamonov/msg/internal/service"
 )
 
 type AuthInterceptor struct {
-	jwtManager      *JWTManager
+	jwtManager      *service.JWTManager
 	accessibleRoles map[string][]string
 }
 
-func NewAuthInterceptor(jwtManager *JWTManager, accessibleRoles map[string][]string) *AuthInterceptor {
+func NewAuthInterceptor(jwtManager *service.JWTManager, accessibleRoles map[string][]string) *AuthInterceptor {
 	return &AuthInterceptor{
 		jwtManager:      jwtManager,
 		accessibleRoles: accessibleRoles,
@@ -59,7 +60,7 @@ func (i *AuthInterceptor) authorize(ctx context.Context, method string) error {
 		return nil
 	}
 
-	claims, err := GetAndVerifyClaimsFromContext(ctx, i.jwtManager)
+	claims, err := service.GetAndVerifyClaimsFromContext(ctx, i.jwtManager)
 	if err != nil {
 		return err
 	}
@@ -71,23 +72,4 @@ func (i *AuthInterceptor) authorize(ctx context.Context, method string) error {
 	}
 
 	return status.Errorf(codes.PermissionDenied, "user does not have permission")
-}
-
-func GetAndVerifyClaimsFromContext(ctx context.Context, jwtManager *JWTManager) (*UserClaims, error) {
-	md, ok := metadata.FromIncomingContext(ctx)
-	if !ok {
-		return nil, status.Error(codes.Unauthenticated, "metadata is not provided")
-	}
-
-	values := md["authorization"]
-	if len(values) == 0 {
-		return nil, status.Error(codes.Unauthenticated, "authorization token is not provided")
-	}
-
-	accessToken := values[0]
-	claims, err := jwtManager.Verify(accessToken)
-	if err != nil {
-		return nil, status.Errorf(codes.Unauthenticated, "access token is invalid: %v", err)
-	}
-	return claims, nil
 }

@@ -1,16 +1,17 @@
-package auth
+package repository
 
 import (
 	"database/sql"
 
+	"github.com/ArtyomArtamonov/msg/internal/model"
 	"github.com/google/uuid"
 	_ "github.com/lib/pq"
 )
 
 type UserStore interface {
-	Save(user *User) error
-	Find(id uuid.UUID) (*User, error)
-	FindByUsername(username string) (*User, error)
+	Save(user *model.User) error
+	Find(id uuid.UUID) (*model.User, error)
+	FindByUsername(username string) (*model.User, error)
 }
 
 type PostgresUserStore struct {
@@ -23,7 +24,7 @@ func NewPostgresUserStore(db *sql.DB) *PostgresUserStore {
 	}
 }
 
-func (s *PostgresUserStore) Save(user *User) error {
+func (s *PostgresUserStore) Save(user *model.User) error {
 	_, err := s.db.Exec("INSERT INTO users(id, username, password_hash, role) VALUES($1,$2,$3,$4) RETURNING id",
 		user.Id, user.Username, user.PasswordHash, user.Role)
 
@@ -34,10 +35,10 @@ func (s *PostgresUserStore) Save(user *User) error {
 	return nil
 }
 
-func (s *PostgresUserStore) Find(id uuid.UUID) (*User, error) {
+func (s *PostgresUserStore) Find(id uuid.UUID) (*model.User, error) {
 	row := s.db.QueryRow("SELECT id, username, password_hash, role FROM users WHERE id=$1", id)
 
-	user := &User{}
+	user := new(model.User)
 	if err := row.Scan(&user.Id, &user.Username, &user.PasswordHash, &user.Role); err != nil {
 		return nil, err
 	}
@@ -45,10 +46,10 @@ func (s *PostgresUserStore) Find(id uuid.UUID) (*User, error) {
 	return user, nil
 }
 
-func (s *PostgresUserStore) FindByUsername(username string) (*User, error) {
+func (s *PostgresUserStore) FindByUsername(username string) (*model.User, error) {
 	row := s.db.QueryRow("SELECT id, username, password_hash, role FROM users WHERE username=$1", username)
 
-	user := &User{}
+	user := new(model.User)
 	if err := row.Scan(&user.Id, &user.Username, &user.PasswordHash, &user.Role); err != nil {
 		return nil, err
 	}
