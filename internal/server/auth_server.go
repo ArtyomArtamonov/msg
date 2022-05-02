@@ -5,9 +5,9 @@ import (
 	"time"
 	"unicode/utf8"
 
-	pb "github.com/ArtyomArtamonov/msg/internal/server/proto"
 	"github.com/ArtyomArtamonov/msg/internal/model"
 	"github.com/ArtyomArtamonov/msg/internal/repository"
+	pb "github.com/ArtyomArtamonov/msg/internal/server/proto"
 	"github.com/ArtyomArtamonov/msg/internal/service"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
@@ -20,10 +20,10 @@ type AuthServer struct {
 
 	userStore         repository.UserStore
 	refreshTokenStore repository.RefreshTokenStore
-	jwtManager        *service.JWTManager
+	jwtManager        service.JWTManagerProtol
 }
 
-func NewAuthServer(userStore repository.UserStore, refreshTokenStore repository.RefreshTokenStore, jwtManager *service.JWTManager) *AuthServer {
+func NewAuthServer(userStore repository.UserStore, refreshTokenStore repository.RefreshTokenStore, jwtManager service.JWTManagerProtol) *AuthServer {
 	return &AuthServer{
 		userStore:         userStore,
 		jwtManager:        jwtManager,
@@ -111,14 +111,14 @@ func (s *AuthServer) Refresh(ctx context.Context, req *pb.RefreshRequest) (*pb.T
 
 	if token.ExpiresAt.Unix() < time.Now().Unix() {
 		if err := s.refreshTokenStore.Delete(refreshUUID); err != nil {
-			logrus.Error("could not delete old refresh token: %v", err)
+			logrus.Errorf("could not delete old refresh token: %v", err)
 		}
 		return nil, status.Error(codes.Unauthenticated, "refresh token is expired")
 	}
 
 	user, err := s.userStore.Find(token.UserId)
 	if err != nil {
-		logrus.Error("needs to be investigated: %v", err)
+		logrus.Errorf("needs to be investigated: %v", err)
 		return nil, status.Error(codes.Internal, "hmm... this is strange. That could not possibly happen")
 	}
 

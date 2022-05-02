@@ -13,6 +13,12 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+type JWTManagerProtol interface {
+	Generate(user *model.User) (*model.TokenPair, error)
+	Verify(accessToken string) (*model.UserClaims, error)
+	NewRefreshToken(userId uuid.UUID) *model.RefreshToken
+}
+
 type JWTManager struct {
 	secretKey            string
 	tokenDuration        time.Duration
