@@ -24,7 +24,7 @@ type ApiServer struct {
 func NewApiServer(jwtManager *service.JWTManager, roomStore repository.RoomStore) *ApiServer {
 	return &ApiServer{
 		jwtManager: jwtManager,
-		roomStore: roomStore,
+		roomStore:  roomStore,
 	}
 }
 
@@ -53,13 +53,13 @@ func (s *ApiServer) CreateRoom(ctx context.Context, req *pb.CreateRoomRequest) (
 			st, ok := status.FromError(err)
 			if ok && st.Code() == codes.AlreadyExists {
 				createRoomStatus := &pb.CreateRoomStatus{
-					RoomId:   room.Id.String(),
-					Name:     room.Name,
-					Users:    req.Users,
+					RoomId: room.Id.String(),
+					Name:   room.Name,
+					Users:  req.Users,
 				}
 				return createRoomStatus, err
 			} else {
-				return nil, status.Errorf(codes.Internal, "cannot create room: ", err)
+				return nil, status.Errorf(codes.Internal, "cannot create room: %v", err)
 			}
 		}
 	}
@@ -67,13 +67,13 @@ func (s *ApiServer) CreateRoom(ctx context.Context, req *pb.CreateRoomRequest) (
 	newRoom := model.NewRoom(req.Name, req.IsDialogRoom, req.Users...)
 	err := s.roomStore.Add(newRoom)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "cannot create room: ", err)
+		return nil, status.Errorf(codes.Internal, "cannot create room: %v", err)
 	}
 
 	createRoomStatus := &pb.CreateRoomStatus{
-		RoomId:   newRoom.Id.String(),
-		Name:     newRoom.Name,
-		Users:    req.Users,
+		RoomId: newRoom.Id.String(),
+		Name:   newRoom.Name,
+		Users:  req.Users,
 	}
 
 	return createRoomStatus, nil
