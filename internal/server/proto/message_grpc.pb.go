@@ -24,7 +24,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type MessageServiceClient interface {
 	GetMessages(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (MessageService_GetMessagesClient, error)
-	SendMessage(ctx context.Context, in *MessageRequest, opts ...grpc.CallOption) (*Status, error)
+	SendMessage(ctx context.Context, in *MessageRequest, opts ...grpc.CallOption) (*MessageRequestStatus, error)
 }
 
 type messageServiceClient struct {
@@ -67,8 +67,8 @@ func (x *messageServiceGetMessagesClient) Recv() (*MessageResponse, error) {
 	return m, nil
 }
 
-func (c *messageServiceClient) SendMessage(ctx context.Context, in *MessageRequest, opts ...grpc.CallOption) (*Status, error) {
-	out := new(Status)
+func (c *messageServiceClient) SendMessage(ctx context.Context, in *MessageRequest, opts ...grpc.CallOption) (*MessageRequestStatus, error) {
+	out := new(MessageRequestStatus)
 	err := c.cc.Invoke(ctx, "/message.MessageService/SendMessage", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -81,7 +81,7 @@ func (c *messageServiceClient) SendMessage(ctx context.Context, in *MessageReque
 // for forward compatibility
 type MessageServiceServer interface {
 	GetMessages(*empty.Empty, MessageService_GetMessagesServer) error
-	SendMessage(context.Context, *MessageRequest) (*Status, error)
+	SendMessage(context.Context, *MessageRequest) (*MessageRequestStatus, error)
 	mustEmbedUnimplementedMessageServiceServer()
 }
 
@@ -92,7 +92,7 @@ type UnimplementedMessageServiceServer struct {
 func (UnimplementedMessageServiceServer) GetMessages(*empty.Empty, MessageService_GetMessagesServer) error {
 	return status.Errorf(codes.Unimplemented, "method GetMessages not implemented")
 }
-func (UnimplementedMessageServiceServer) SendMessage(context.Context, *MessageRequest) (*Status, error) {
+func (UnimplementedMessageServiceServer) SendMessage(context.Context, *MessageRequest) (*MessageRequestStatus, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SendMessage not implemented")
 }
 func (UnimplementedMessageServiceServer) mustEmbedUnimplementedMessageServiceServer() {}

@@ -1,5 +1,6 @@
 .env
 docker-compose.env
 pgadmin
+bin
 
 __debug_bin

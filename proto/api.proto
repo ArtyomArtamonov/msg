@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package api;
+
+option go_package = "github.com/ArtyomArtamonov/msg/internal/server/proto";
+
+message CreateRoomRequest {
+    string name = 1;
+    bool is_dialog_room = 2;
+    repeated string users = 3;
+}
+
+service ApiService {
+    rpc CreateRoom(CreateRoomRequest) returns (CreateRoomStatus);
+}
+
+message CreateRoomStatus {
+    string room_id = 1;
+    string name = 2;
+    repeated string users = 3;
+}

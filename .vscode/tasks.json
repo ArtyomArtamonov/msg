@@ -7,6 +7,11 @@
             "label": "proto-compile",
             "type": "shell",
             "command": "make proto-c"
+        },
+        {
+            "label": "build",
+            "type": "shell",
+            "command": "make build"
         }
     ]
 }

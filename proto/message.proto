@@ -13,7 +13,7 @@ message MessageRequest {
 
 service MessageService {
     rpc GetMessages(google.protobuf.Empty) returns (stream MessageResponse);
-    rpc SendMessage(MessageRequest) returns (Status);
+    rpc SendMessage(MessageRequest) returns (MessageRequestStatus);
 }
 
 message MessageResponse {
@@ -21,7 +21,7 @@ message MessageResponse {
     string from = 2;
 }
 
-message Status {
+message MessageRequestStatus {
     bool success = 1;
     string message = 2;
 }

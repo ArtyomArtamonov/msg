@@ -69,7 +69,7 @@ func (s *MessageServer) GetMessages(req *emptypb.Empty, srv pb.MessageService_Ge
 	return nil
 }
 
-func (s *MessageServer) SendMessage(ctx context.Context, req *pb.MessageRequest) (*pb.Status, error) {
+func (s *MessageServer) SendMessage(ctx context.Context, req *pb.MessageRequest) (*pb.MessageRequestStatus, error) {
 	claims, err := service.GetAndVerifyClaimsFromContext(ctx, s.jwtManager)
 	if err != nil {
 		return nil, err
@@ -80,7 +80,7 @@ func (s *MessageServer) SendMessage(ctx context.Context, req *pb.MessageRequest)
 		return nil, status.Errorf(codes.InvalidArgument, "user with specified id was not found: %v", err)
 	}
 
-	return &pb.Status{
+	return &pb.MessageRequestStatus{
 		Success: true,
 		Message: fmt.Sprintf("Message was sent to %s", req.To),
 	}, nil
@@ -116,7 +116,7 @@ func (s *MessageServer) sendMessage(message string, to string, from string) erro
 		logrus.Error(err)
 	}
 
-	// TODO: Save message to database
+	// TODO: Save message to databasepa
 	logrus.Info("Message sent to id=", to)
 	return err
 }
