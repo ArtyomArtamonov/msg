@@ -17,6 +17,7 @@ type JWTManagerProtol interface {
 	Generate(user *model.User) (*model.TokenPair, error)
 	Verify(accessToken string) (*model.UserClaims, error)
 	NewRefreshToken(userId uuid.UUID) *model.RefreshToken
+	GetAndVerifyClaims(ctx context.Context) (*model.UserClaims, error)
 }
 
 type JWTManager struct {
@@ -59,14 +60,16 @@ func (m *JWTManager) Generate(user *model.User) (*model.TokenPair, error) {
 }
 
 func (m *JWTManager) Verify(accessToken string) (*model.UserClaims, error) {
-	token, err := jwt.ParseWithClaims(accessToken, &model.UserClaims{}, func(t *jwt.Token) (interface{}, error) {
-		_, ok := t.Method.(*jwt.SigningMethodHMAC)
-		if !ok {
-			return nil, fmt.Errorf("unexpected token signing method")
-		}
-
-		return []byte(m.secretKey), nil
-	})
+	token, err := jwt.ParseWithClaims(
+		accessToken,
+		&model.UserClaims{},
+		func(t *jwt.Token) (interface{}, error) {
+			_, ok := t.Method.(*jwt.SigningMethodHMAC)
+			if !ok {
+				return nil, fmt.Errorf("unexpected token signing method")
+			}
+			return []byte(m.secretKey), nil
+		})
 
 	if err != nil {
 		return nil, fmt.Errorf("invalid token: %v", err)
@@ -90,7 +93,7 @@ func (m *JWTManager) NewRefreshToken(userId uuid.UUID) *model.RefreshToken {
 	return token
 }
 
-func GetAndVerifyClaimsFromContext(ctx context.Context, jwtManager JWTManagerProtol) (*model.UserClaims, error) {
+func (m *JWTManager) GetAndVerifyClaims(ctx context.Context) (*model.UserClaims, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		return nil, status.Error(codes.Unauthenticated, "metadata is not provided")
@@ -102,7 +105,7 @@ func GetAndVerifyClaimsFromContext(ctx context.Context, jwtManager JWTManagerPro
 	}
 
 	accessToken := values[0]
-	claims, err := jwtManager.Verify(accessToken)
+	claims, err := m.Verify(accessToken)
 	if err != nil {
 		return nil, status.Errorf(codes.Unauthenticated, "authorization token is invalid: %v", err)
 	}

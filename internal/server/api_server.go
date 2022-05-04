@@ -87,8 +87,8 @@ func (s *ApiServer) ListRooms(ctx context.Context, req *pb.ListRoomsRequest) (*p
 	if req.PageSize > 100 {
 		return nil, status.Error(codes.InvalidArgument, "page_size cannot be bigger than 100")
 	}
-	
-	claims, err := service.GetAndVerifyClaimsFromContext(ctx, s.jwtManager)
+
+	claims, err := s.jwtManager.GetAndVerifyClaims(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -102,24 +102,24 @@ func (s *ApiServer) ListRooms(ctx context.Context, req *pb.ListRoomsRequest) (*p
 	if req.PageToken == nil {
 		rooms, err = s.roomStore.ListRoomsFirst(userId, int(req.PageSize))
 	} else {
-		lastMessageTime, e := decodeToken(req.PageToken.Value)
+		lastMessageTime, e := decodePageToken(req.PageToken.Value)
 		if e != nil {
-			return nil, status.Errorf(codes.InvalidArgument, "cannot parse next token: %v", err)
+			return nil, status.Errorf(codes.InvalidArgument, "cannot parse next token: %v", e)
 		}
 		rooms, err = s.roomStore.ListRooms(userId, *lastMessageTime, int(req.PageSize))
 	}
-	
+
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "cannot get rooms: %v", err)
 	}
 
-	var next string 
+	var nextToken string
 	if len(rooms) < int(req.PageSize) {
-		next = ""
+		nextToken = ""
 	} else {
-		next = encodeToken(rooms[len(rooms)-1].LastMessageTime)
+		lastRoom := rooms[len(rooms)-1]
+		nextToken = encodePageToken(lastRoom.LastMessageTime)
 	}
-	
 
 	pbRooms := []*pb.Room{}
 	for _, room := range rooms {
@@ -127,23 +127,23 @@ func (s *ApiServer) ListRooms(ctx context.Context, req *pb.ListRoomsRequest) (*p
 	}
 
 	var listRoomsResponse *pb.ListRoomsResponse
-	if len(next) == 0 {
+	if len(nextToken) == 0 {
 		listRoomsResponse = &pb.ListRoomsResponse{
 			NextToken: nil,
 			Rooms:     pbRooms,
 		}
 	} else {
 		listRoomsResponse = &pb.ListRoomsResponse{
-			NextToken: &wrapperspb.StringValue{Value: next},
+			NextToken: &wrapperspb.StringValue{Value: nextToken},
 			Rooms:     pbRooms,
 		}
 	}
-	
+
 	return listRoomsResponse, nil
 
 }
 
-func decodeToken(token string) (*time.Time, error) {
+func decodePageToken(token string) (*time.Time, error) {
 	buf, err := base64.StdEncoding.DecodeString(token)
 	if err != nil {
 		return nil, err
@@ -157,6 +157,6 @@ func decodeToken(token string) (*time.Time, error) {
 	return &t, nil
 }
 
-func encodeToken(lastMessageDate time.Time) string {
+func encodePageToken(lastMessageDate time.Time) string {
 	return base64.StdEncoding.EncodeToString([]byte(lastMessageDate.Format(time.RFC3339)))
 }

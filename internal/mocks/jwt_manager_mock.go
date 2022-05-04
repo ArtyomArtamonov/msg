@@ -1,6 +1,8 @@
 package mocks
 
 import (
+	"context"
+
 	"github.com/ArtyomArtamonov/msg/internal/model"
 	"github.com/ArtyomArtamonov/msg/internal/utils"
 	"github.com/google/uuid"
@@ -24,4 +26,9 @@ func (m *JWTManagerMock) Verify(accessToken string) (*model.UserClaims, error) {
 func (m *JWTManagerMock) NewRefreshToken(userId uuid.UUID) *model.RefreshToken {
 	args := m.Called(userId)
 	return utils.Unwrap[*model.RefreshToken](args.Get(0))
+}
+
+func (m *JWTManagerMock) GetAndVerifyClaims(ctx context.Context) (*model.UserClaims, error) {
+	args := m.Called(ctx)
+	return utils.Unwrap[*model.UserClaims](args.Get(0)), utils.Unwrap[error](args.Get(1))
 }

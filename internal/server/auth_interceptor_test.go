@@ -10,41 +10,10 @@ import (
 	pb "github.com/ArtyomArtamonov/msg/internal/server/proto"
 	"github.com/golang-jwt/jwt"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
-
-func TestAuthInterceptor_UnaryFailsWithNoToken(t *testing.T) {
-	setupTest()
-
-	expectedRequest := &struct{}{}
-
-	contextMock := new(mocks.ContextMock)
-	contextMock.On("Value", mock.Anything).Return(metadata.MD{
-		// empty metadata
-	})
-
-	endpoint := endpoints.MessageService.SendMessage
-	authInterceptor := NewAuthInterceptor(jwtManagerMock, endpointRoles)
-	res, err := authInterceptor.Unary()(
-		contextMock,
-		expectedRequest,
-		&grpc.UnaryServerInfo{
-			Server:     nil,
-			FullMethod: endpoint,
-		},
-		func(ctx context.Context, req interface{}) (interface{}, error) {
-			assert.FailNow(t, "Should not have been called")
-			return nil, nil
-		},
-	)
-
-	assert.Nil(t, res)
-	assert.ErrorIs(t, status.Error(codes.Unauthenticated, "authorization token is not provided"), err)
-}
 
 func TestAuthInterceptor_UnaryFailsWithInvalidToken(t *testing.T) {
 	setupTest()
@@ -52,17 +21,14 @@ func TestAuthInterceptor_UnaryFailsWithInvalidToken(t *testing.T) {
 	expectedRequest := &struct{}{}
 	expectedError := errors.New("some_error")
 
-	token := "some_access_token"
-	contextMock := new(mocks.ContextMock)
-	contextMock.On("Value", mock.Anything).Return(metadata.MD{
-		"authorization": {token},
+	ctx := context.TODO()
+	jwtManagerMock.On("GetAndVerifyClaims", ctx).Return(nil, expectedError)
+	endpoint := "some_endpoint"
+	authInterceptor := NewAuthInterceptor(jwtManagerMock, EndpointRoles{
+		endpoint: {model.USER_ROLE},
 	})
-	jwtManagerMock.On("Verify", token).Return(nil, expectedError)
-
-	endpoint := endpoints.MessageService.SendMessage
-	authInterceptor := NewAuthInterceptor(jwtManagerMock, endpointRoles)
 	res, err := authInterceptor.Unary()(
-		contextMock,
+		ctx,
 		expectedRequest,
 		&grpc.UnaryServerInfo{
 			Server:     nil,
@@ -75,10 +41,41 @@ func TestAuthInterceptor_UnaryFailsWithInvalidToken(t *testing.T) {
 	)
 
 	assert.Nil(t, res)
-	assert.ErrorIs(t, status.Error(codes.Unauthenticated, "authorization token is invalid: some_error"), err)
+	assert.ErrorIs(t, expectedError, err)
 }
 
-func TestAuthInterceptor_UnarySussess(t *testing.T) {
+func TestAuthInterceptor_UnaryFailsWithoutEndpointPermissions(t *testing.T) {
+	setupTest()
+
+	expectedRequest := &struct{}{}
+
+	ctx := context.TODO()
+	jwtManagerMock.On("GetAndVerifyClaims", ctx).Return(&model.UserClaims{
+		StandardClaims: jwt.StandardClaims{},
+		Role:           model.USER_ROLE,
+	}, nil)
+	endpoint := "some_endpoint"
+	authInterceptor := NewAuthInterceptor(jwtManagerMock, EndpointRoles{
+		endpoint: {},
+	})
+	res, err := authInterceptor.Unary()(
+		ctx,
+		expectedRequest,
+		&grpc.UnaryServerInfo{
+			Server:     nil,
+			FullMethod: endpoint,
+		},
+		func(ctx context.Context, req interface{}) (interface{}, error) {
+			assert.FailNow(t, "Should not have been called")
+			return nil, nil
+		},
+	)
+
+	assert.Nil(t, res)
+	assert.ErrorIs(t, status.Errorf(codes.PermissionDenied, "user does not have permission"), err)
+}
+
+func TestAuthInterceptor_UnarySussessForAnyone(t *testing.T) {
 	setupTest()
 
 	expectedRequest := &pb.MessageRequest{
@@ -91,20 +88,17 @@ func TestAuthInterceptor_UnarySussess(t *testing.T) {
 	}
 	expectedError := errors.New("some_error")
 
-	token := "some_access_token"
-	contextMock := new(mocks.ContextMock)
-	contextMock.On("Value", mock.Anything).Return(metadata.MD{
-		"authorization": {token},
-	})
-	jwtManagerMock.On("Verify", token).Return(&model.UserClaims{
+	ctx := context.TODO()
+	jwtManagerMock.On("GetAndVerifyClaims", ctx).Return(&model.UserClaims{
 		StandardClaims: jwt.StandardClaims{},
 		Role:           model.USER_ROLE,
 	}, nil)
-
-	endpoint := endpoints.MessageService.SendMessage
-	authInterceptor := NewAuthInterceptor(jwtManagerMock, endpointRoles)
+	endpoint := "some_endpoint"
+	authInterceptor := NewAuthInterceptor(jwtManagerMock, EndpointRoles{
+		// allow all endpoints for anyone
+	})
 	res, err := authInterceptor.Unary()(
-		contextMock,
+		ctx,
 		expectedRequest,
 		&grpc.UnaryServerInfo{
 			Server:     nil,
@@ -120,34 +114,43 @@ func TestAuthInterceptor_UnarySussess(t *testing.T) {
 	assert.ErrorIs(t, expectedError, err)
 }
 
-func TestAuthInterceptor_StreamFailsWithNoToken(t *testing.T) {
+func TestAuthInterceptor_UnarySussessWithPermissions(t *testing.T) {
 	setupTest()
 
-	expectedStream := &mocks.ServerStreamMock{}
+	expectedRequest := &pb.MessageRequest{
+		To:      "some_user",
+		Message: "some message",
+	}
+	expectedResponse := &pb.MessageRequestStatus{
+		Success: true,
+		Message: "some message",
+	}
+	expectedError := errors.New("some_error")
 
-	contextMock := new(mocks.ContextMock)
-	contextMock.On("Value", mock.Anything).Return(metadata.MD{
-		// empty metadata
+	ctx := context.TODO()
+	jwtManagerMock.On("GetAndVerifyClaims", ctx).Return(&model.UserClaims{
+		StandardClaims: jwt.StandardClaims{},
+		Role:           model.USER_ROLE,
+	}, nil)
+	endpoint := "some_endpoint"
+	authInterceptor := NewAuthInterceptor(jwtManagerMock, EndpointRoles{
+		endpoint: {model.USER_ROLE},
 	})
-	expectedStream.On("Context").Return(contextMock)
-
-	endpoint := endpoints.MessageService.SendMessage
-	authInterceptor := NewAuthInterceptor(jwtManagerMock, endpointRoles)
-	err := authInterceptor.Stream()(
-		contextMock,
-		expectedStream,
-		&grpc.StreamServerInfo{
-			FullMethod:     endpoint,
-			IsClientStream: false,
-			IsServerStream: true,
+	res, err := authInterceptor.Unary()(
+		ctx,
+		expectedRequest,
+		&grpc.UnaryServerInfo{
+			Server:     nil,
+			FullMethod: endpoint,
 		},
-		func(srv interface{}, stream grpc.ServerStream) error {
-			assert.FailNow(t, "Should not have been called")
-			return nil
+		func(ctx context.Context, req interface{}) (interface{}, error) {
+			assert.Equal(t, expectedRequest, req)
+			return expectedResponse, expectedError
 		},
 	)
 
-	assert.ErrorIs(t, status.Error(codes.Unauthenticated, "authorization token is not provided"), err)
+	assert.Equal(t, expectedResponse, res)
+	assert.ErrorIs(t, expectedError, err)
 }
 
 func TestAuthInterceptor_StreamFailsWithInvalidToken(t *testing.T) {
@@ -156,18 +159,15 @@ func TestAuthInterceptor_StreamFailsWithInvalidToken(t *testing.T) {
 	expectedStream := &mocks.ServerStreamMock{}
 	expectedError := errors.New("some_error")
 
-	token := "some_access_token"
-	contextMock := new(mocks.ContextMock)
-	contextMock.On("Value", mock.Anything).Return(metadata.MD{
-		"authorization": {token},
+	ctx := context.TODO()
+	expectedStream.On("Context").Return(ctx)
+	jwtManagerMock.On("GetAndVerifyClaims", ctx).Return(nil, expectedError)
+	endpoint := "some_endpoint"
+	authInterceptor := NewAuthInterceptor(jwtManagerMock, EndpointRoles{
+		endpoint: {model.USER_ROLE},
 	})
-	expectedStream.On("Context").Return(contextMock)
-	jwtManagerMock.On("Verify", token).Return(nil, expectedError)
-
-	endpoint := endpoints.MessageService.SendMessage
-	authInterceptor := NewAuthInterceptor(jwtManagerMock, endpointRoles)
 	err := authInterceptor.Stream()(
-		contextMock,
+		ctx,
 		expectedStream,
 		&grpc.StreamServerInfo{
 			FullMethod:     endpoint,
@@ -180,30 +180,94 @@ func TestAuthInterceptor_StreamFailsWithInvalidToken(t *testing.T) {
 		},
 	)
 
-	assert.ErrorIs(t, status.Error(codes.Unauthenticated, "authorization token is invalid: some_error"), err)
+	assert.ErrorIs(t, expectedError, err)
 }
 
-func TestAuthInterceptor_StreamSussess(t *testing.T) {
+func TestAuthInterceptor_StreamFailsWithoutEndpointPermissions(t *testing.T) {
+	setupTest()
+
+	expectedStream := &mocks.ServerStreamMock{}
+
+	ctx := context.TODO()
+	expectedStream.On("Context").Return(ctx)
+	jwtManagerMock.On("GetAndVerifyClaims", ctx).Return(&model.UserClaims{
+		StandardClaims: jwt.StandardClaims{},
+		Role:           model.USER_ROLE,
+	}, nil)
+	endpoint := "some_endpoint"
+	authInterceptor := NewAuthInterceptor(jwtManagerMock, EndpointRoles{
+		endpoint: {},
+	})
+	err := authInterceptor.Stream()(
+		ctx,
+		expectedStream,
+		&grpc.StreamServerInfo{
+			FullMethod:     endpoint,
+			IsClientStream: false,
+			IsServerStream: true,
+		},
+		func(srv interface{}, stream grpc.ServerStream) error {
+			assert.FailNow(t, "Should not have been called")
+			return nil
+		},
+	)
+
+	assert.ErrorIs(t, status.Errorf(codes.PermissionDenied, "user does not have permission"), err)
+}
+
+func TestAuthInterceptor_StreamSussessForAnyone(t *testing.T) {
 	setupTest()
 
 	expectedStream := &mocks.ServerStreamMock{}
 	expectedError := errors.New("some_error")
 
-	token := "some_access_token"
-	contextMock := new(mocks.ContextMock)
-	contextMock.On("Value", mock.Anything).Return(metadata.MD{
-		"authorization": {token},
-	})
-	expectedStream.On("Context").Return(contextMock)
-	jwtManagerMock.On("Verify", token).Return(&model.UserClaims{
+	ctx := context.TODO()
+	expectedStream.On("Context").Return(ctx)
+	expectedStream.On("Context").Return(ctx)
+	jwtManagerMock.On("GetAndVerifyClaims", ctx).Return(&model.UserClaims{
 		StandardClaims: jwt.StandardClaims{},
 		Role:           model.USER_ROLE,
 	}, nil)
-
-	endpoint := endpoints.MessageService.SendMessage
-	authInterceptor := NewAuthInterceptor(jwtManagerMock, endpointRoles)
+	endpoint := "some_endpoint"
+	authInterceptor := NewAuthInterceptor(jwtManagerMock, EndpointRoles{
+		// allow all endpoints for anyone
+	})
 	err := authInterceptor.Stream()(
-		contextMock,
+		ctx,
+		expectedStream,
+		&grpc.StreamServerInfo{
+			FullMethod:     endpoint,
+			IsClientStream: false,
+			IsServerStream: true,
+		},
+		func(srv interface{}, stream grpc.ServerStream) error {
+			assert.Equal(t, stream, expectedStream)
+			return expectedError
+		},
+	)
+
+	assert.ErrorIs(t, expectedError, err)
+}
+
+func TestAuthInterceptor_StreamSussessWithPermissions(t *testing.T) {
+	setupTest()
+
+	expectedStream := &mocks.ServerStreamMock{}
+	expectedError := errors.New("some_error")
+
+	ctx := context.TODO()
+	expectedStream.On("Context").Return(ctx)
+	expectedStream.On("Context").Return(ctx)
+	jwtManagerMock.On("GetAndVerifyClaims", ctx).Return(&model.UserClaims{
+		StandardClaims: jwt.StandardClaims{},
+		Role:           model.USER_ROLE,
+	}, nil)
+	endpoint := "some_endpoint"
+	authInterceptor := NewAuthInterceptor(jwtManagerMock, EndpointRoles{
+		endpoint: {model.USER_ROLE},
+	})
+	err := authInterceptor.Stream()(
+		ctx,
 		expectedStream,
 		&grpc.StreamServerInfo{
 			FullMethod:     endpoint,

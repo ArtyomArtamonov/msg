@@ -10,8 +10,6 @@ var roomStoreMock *mocks.RoomStoreMock
 var userStoreMock *mocks.UserStoreMock
 var apiServer *ApiServer
 var authServer *AuthServer
-var endpoints *Endpoints
-var endpointRoles EndpointRoles
 
 func setupTest() {
 	jwtManagerMock = new(mocks.JWTManagerMock)
@@ -24,6 +22,4 @@ func setupTest() {
 		refreshTokenStore: refreshTokenStoreMock,
 		jwtManager:        jwtManagerMock,
 	}
-	endpoints = NewEndpoints()
-	endpointRoles = NewEndpointRoles(endpoints)
 }

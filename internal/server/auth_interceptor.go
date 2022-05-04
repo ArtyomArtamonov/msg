@@ -66,7 +66,7 @@ func (i *AuthInterceptor) authorize(ctx context.Context, method string) error {
 		return nil
 	}
 
-	claims, err := service.GetAndVerifyClaimsFromContext(ctx, i.jwtManager)
+	claims, err := i.jwtManager.GetAndVerifyClaims(ctx)
 	if err != nil {
 		return err
 	}

@@ -33,7 +33,7 @@ func NewMessageServer(jwtManager *service.JWTManager, sessionStore repository.Se
 
 func (s *MessageServer) GetMessages(req *emptypb.Empty, srv pb.MessageService_GetMessagesServer) error {
 	ctx := srv.Context()
-	claims, err := service.GetAndVerifyClaimsFromContext(ctx, s.jwtManager)
+	claims, err := s.jwtManager.GetAndVerifyClaims(ctx)
 	if err != nil {
 		return err
 	}
@@ -70,7 +70,7 @@ func (s *MessageServer) GetMessages(req *emptypb.Empty, srv pb.MessageService_Ge
 }
 
 func (s *MessageServer) SendMessage(ctx context.Context, req *pb.MessageRequest) (*pb.MessageRequestStatus, error) {
-	claims, err := service.GetAndVerifyClaimsFromContext(ctx, s.jwtManager)
+	claims, err := s.jwtManager.GetAndVerifyClaims(ctx)
 	if err != nil {
 		return nil, err
 	}
