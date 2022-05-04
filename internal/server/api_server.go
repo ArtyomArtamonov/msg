@@ -3,7 +3,9 @@ package server
 import (
 	"context"
 	"database/sql"
+	"encoding/base64"
 	"errors"
+	"time"
 
 	"github.com/ArtyomArtamonov/msg/internal/model"
 	"github.com/ArtyomArtamonov/msg/internal/repository"
@@ -12,6 +14,7 @@ import (
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 type ApiServer struct {
@@ -77,4 +80,82 @@ func (s *ApiServer) CreateRoom(ctx context.Context, req *pb.CreateRoomRequest) (
 	}
 
 	return createRoomStatus, nil
+}
+
+func (s *ApiServer) ListRooms(ctx context.Context, req *pb.ListRoomsRequest) (*pb.ListRoomsResponse, error) {
+	if req.PageSize > 100 {
+		return nil, status.Error(codes.InvalidArgument, "page_size cannot be bigger than 100")
+	}
+	
+	claims, err := service.GetAndVerifyClaimsFromContext(ctx, s.jwtManager)
+	if err != nil {
+		return nil, err
+	}
+
+	userId, err := uuid.Parse(claims.Id)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "cannot parse uuid: %v", err)
+	}
+
+	var rooms []model.Room
+	if req.PageToken == nil {
+		rooms, err = s.roomStore.ListRoomsFirst(userId, int(req.PageSize))
+	} else {
+		lastMessageTime, e := decodeToken(req.PageToken.Value)
+		if e != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "cannot parse next token: %v", err)
+		}
+		rooms, err = s.roomStore.ListRooms(userId, *lastMessageTime, int(req.PageSize))
+	}
+	
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "cannot get rooms: %v", err)
+	}
+
+	var next string 
+	if len(rooms) < int(req.PageSize) {
+		next = ""
+	} else {
+		next = encodeToken(rooms[len(rooms)-1].LastMessageTime)
+	}
+	
+
+	pbRooms := []*pb.Room{}
+	for _, room := range rooms {
+		pbRooms = append(pbRooms, room.PbRoom())
+	}
+
+	var listRoomsResponse *pb.ListRoomsResponse
+	if len(next) == 0 {
+		listRoomsResponse = &pb.ListRoomsResponse{
+			NextToken: nil,
+			Rooms:     pbRooms,
+		}
+	} else {
+		listRoomsResponse = &pb.ListRoomsResponse{
+			NextToken: &wrapperspb.StringValue{Value: next},
+			Rooms:     pbRooms,
+		}
+	}
+	
+	return listRoomsResponse, nil
+
+}
+
+func decodeToken(token string) (*time.Time, error) {
+	buf, err := base64.StdEncoding.DecodeString(token)
+	if err != nil {
+		return nil, err
+	}
+
+	t, err := time.Parse(time.RFC3339, string(buf))
+	if err != nil {
+		return nil, err
+	}
+
+	return &t, nil
+}
+
+func encodeToken(lastMessageDate time.Time) string {
+	return base64.StdEncoding.EncodeToString([]byte(lastMessageDate.Format(time.RFC3339)))
 }

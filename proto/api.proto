@@ -1,5 +1,8 @@
 syntax = "proto3";
 
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
 package api;
 
 option go_package = "github.com/ArtyomArtamonov/msg/internal/server/proto";
@@ -10,8 +13,28 @@ message CreateRoomRequest {
     repeated string users = 3;
 }
 
+message ListRoomsRequest {
+    google.protobuf.StringValue page_token = 1;
+    int32 page_size = 2;
+}
+
 service ApiService {
     rpc CreateRoom(CreateRoomRequest) returns (CreateRoomStatus);
+
+    rpc ListRooms(ListRoomsRequest) returns (ListRoomsResponse);
+}
+
+message ListRoomsResponse {
+    google.protobuf.StringValue next_token = 1;
+    repeated Room rooms = 2;
+}
+
+message Room {
+    string id = 1;
+    string name = 2;
+    google.protobuf.Timestamp created_at = 3;
+    bool dialog_room = 4;
+    google.protobuf.Timestamp last_message_time = 5;
 }
 
 message CreateRoomStatus {

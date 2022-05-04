@@ -120,12 +120,15 @@ func createAndPrepareGRPCServer(db *sql.DB) *grpc.Server {
 func accessibleRoles() map[string][]string {
 	const authService = "/message.AuthService/"
 	const messageService = "/message.MessageService/"
-	const apiService = "/message/ApiService/"
+	const apiService = "/message.ApiService/"
 
 	return map[string][]string{
 		messageService + "SendMessage": {model.ADMIN_ROLE, model.USER_ROLE},
 		messageService + "GetMessages": {model.ADMIN_ROLE, model.USER_ROLE},
 
+		authService + "Refresh": {model.ADMIN_ROLE, model.USER_ROLE},
+
 		apiService + "CreateRoom": {model.ADMIN_ROLE, model.USER_ROLE},
+		apiService + "ListRooms": {model.ADMIN_ROLE, model.USER_ROLE},
 	}
 }

@@ -23,6 +23,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ApiServiceClient interface {
 	CreateRoom(ctx context.Context, in *CreateRoomRequest, opts ...grpc.CallOption) (*CreateRoomStatus, error)
+	ListRooms(ctx context.Context, in *ListRoomsRequest, opts ...grpc.CallOption) (*ListRoomsResponse, error)
 }
 
 type apiServiceClient struct {
@@ -42,11 +43,21 @@ func (c *apiServiceClient) CreateRoom(ctx context.Context, in *CreateRoomRequest
 	return out, nil
 }
 
+func (c *apiServiceClient) ListRooms(ctx context.Context, in *ListRoomsRequest, opts ...grpc.CallOption) (*ListRoomsResponse, error) {
+	out := new(ListRoomsResponse)
+	err := c.cc.Invoke(ctx, "/api.ApiService/ListRooms", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ApiServiceServer is the server API for ApiService service.
 // All implementations must embed UnimplementedApiServiceServer
 // for forward compatibility
 type ApiServiceServer interface {
 	CreateRoom(context.Context, *CreateRoomRequest) (*CreateRoomStatus, error)
+	ListRooms(context.Context, *ListRoomsRequest) (*ListRoomsResponse, error)
 	mustEmbedUnimplementedApiServiceServer()
 }
 
@@ -56,6 +67,9 @@ type UnimplementedApiServiceServer struct {
 
 func (UnimplementedApiServiceServer) CreateRoom(context.Context, *CreateRoomRequest) (*CreateRoomStatus, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateRoom not implemented")
+}
+func (UnimplementedApiServiceServer) ListRooms(context.Context, *ListRoomsRequest) (*ListRoomsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListRooms not implemented")
 }
 func (UnimplementedApiServiceServer) mustEmbedUnimplementedApiServiceServer() {}
 
@@ -88,6 +102,24 @@ func _ApiService_CreateRoom_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ApiService_ListRooms_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListRoomsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ApiServiceServer).ListRooms(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/api.ApiService/ListRooms",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ApiServiceServer).ListRooms(ctx, req.(*ListRoomsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ApiService_ServiceDesc is the grpc.ServiceDesc for ApiService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -98,6 +130,10 @@ var ApiService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CreateRoom",
 			Handler:    _ApiService_CreateRoom_Handler,
+		},
+		{
+			MethodName: "ListRooms",
+			Handler:    _ApiService_ListRooms_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

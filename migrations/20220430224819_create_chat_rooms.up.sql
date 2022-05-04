@@ -2,7 +2,8 @@ CREATE TABLE rooms (
     id UUID PRIMARY KEY,
     name VARCHAR(30) NOT NULL DEFAULT 'DEFAULT_ROOM_NAME',
     created_at TIMESTAMP NOT NULL DEFAULT now(),
-    dialog_room BOOLEAN NOT NULL
+    dialog_room BOOLEAN NOT NULL,
+    last_message_time TIMESTAMP NOT NULL DEFAULT now()
 );
 
 CREATE TABLE user_in_room (

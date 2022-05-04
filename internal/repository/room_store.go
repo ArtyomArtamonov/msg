@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"time"
 
 	"github.com/ArtyomArtamonov/msg/internal/model"
 	"github.com/google/uuid"
@@ -17,6 +18,8 @@ type RoomStore interface {
 	FindDialogRoom(userId1, userId2 uuid.UUID) (*model.Room, error)
 	UsersInRoom(id uuid.UUID) ([]model.User, error)
 	FindByIds(usernames ...string) ([]model.User, error)
+	ListRooms(userId uuid.UUID, lastMessageDate time.Time, pageSize int) ([]model.Room, error)
+	ListRoomsFirst(userId uuid.UUID, pageSize int) ([]model.Room, error)
 }
 
 type PostgresRoomStore struct {
@@ -36,8 +39,8 @@ func (s *PostgresRoomStore) Add(room *model.Room) error {
 	}
 	defer tx.Rollback()
 
-	err = tx.QueryRow("INSERT INTO rooms(id, name, created_at, dialog_room) VALUES($1, $2, $3, $4) RETURNING id",
-		room.Id, room.Name, room.CreatedAt, room.DialogRoom).Scan(&room.Id)
+	err = tx.QueryRow("INSERT INTO rooms(id, name, created_at, dialog_room, last_message_time) VALUES($1, $2, $3, $4, $5) RETURNING id",
+		room.Id, room.Name, room.CreatedAt, room.DialogRoom, room.LastMessageTime).Scan(&room.Id)
 	if err != nil {
 		return err
 	}
@@ -61,8 +64,8 @@ func (s *PostgresRoomStore) Add(room *model.Room) error {
 
 func (s *PostgresRoomStore) Get(id uuid.UUID) (*model.Room, error) {
 	var room *model.Room
-	err := s.db.QueryRow("SELECT id, name, created_at, dialog_room FROM rooms WHERE id=$1",
-		id).Scan(&room.Id, &room.Name, &room.CreatedAt, &room.DialogRoom)
+	err := s.db.QueryRow("SELECT id, name, created_at, dialog_room, last_message_time FROM rooms WHERE id=$1",
+		id).Scan(&room.Id, &room.Name, &room.CreatedAt, &room.DialogRoom, &room.LastMessageTime)
 
 	return room, err
 }
@@ -74,7 +77,7 @@ func (s *PostgresRoomStore) FindDialogRoom(userId1, userId2 uuid.UUID) (*model.R
 		SELECT DISTINCT rooms.id, rooms.* FROM rooms
 		INNER JOIN user_in_room ON rooms.id=user_in_room.room_id
 		WHERE rooms.dialog_room=TRUE AND (user_in_room.user_id=$1 OR user_in_room.user_id=$2)
-	`, userId1, userId2).Scan(&room.Id, &room.Id, &room.Name, &room.CreatedAt, &room.DialogRoom)
+	`, userId1, userId2).Scan(&room.Id, &room.Id, &room.Name, &room.CreatedAt, &room.DialogRoom, &room.LastMessageTime)
 
 	if err != nil {
 		return nil, err
@@ -140,4 +143,58 @@ func (s *PostgresRoomStore) FindByIds(ids ...string) ([]model.User, error) {
 	}
 
 	return users, nil
+}
+
+func (s *PostgresRoomStore) ListRooms(userId uuid.UUID, lastMessageDate time.Time, pageSize int) ([]model.Room, error) {
+	rows, err := s.db.Query(
+		`
+		SELECT DISTINCT rooms.id, rooms.* FROM rooms
+		INNER JOIN user_in_room ON rooms.id=user_in_room.room_id
+		WHERE user_in_room.user_id=$1 AND rooms.last_message_time<=$2
+		ORDER BY rooms.last_message_time DESC
+		LIMIT $3
+		`, userId, lastMessageDate, pageSize)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var rooms []model.Room
+	for rows.Next() {
+		var room model.Room
+		err = rows.Scan(&room.Id, &room.Id, &room.Name, &room.CreatedAt, &room.DialogRoom, &room.LastMessageTime)
+		if err != nil {
+			return nil, err
+		}
+		rooms = append(rooms, room)
+	}
+
+	return rooms, nil
+}
+
+func (s *PostgresRoomStore) ListRoomsFirst(userId uuid.UUID, pageSize int) ([]model.Room, error) {
+	rows, err := s.db.Query(
+		`
+		SELECT DISTINCT rooms.id, rooms.* FROM rooms
+		INNER JOIN user_in_room ON rooms.id=user_in_room.room_id
+		WHERE user_in_room.user_id=$1
+		ORDER BY rooms.last_message_time DESC
+		LIMIT $2
+		`, userId, pageSize)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var rooms []model.Room
+	for rows.Next() {
+		var room model.Room
+		err = rows.Scan(&room.Id, &room.Id, &room.Name, &room.CreatedAt, &room.DialogRoom, &room.LastMessageTime)
+		if err != nil {
+			return nil, err
+		}
+		rooms = append(rooms, room)
+	}
+
+	return rooms, nil
 }
