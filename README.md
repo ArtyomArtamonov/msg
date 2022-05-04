@@ -15,6 +15,21 @@ Already achieved:
 - PostgreSQL as persistance storage
 - gRPC and protobuf service creation with help of Makefile and well-prepared code organization
 
+## Compiling proto messages
+
+Run
+
+```
+make proto-c
+```
+
+For that to work you need to install
+
+```
+go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.28
+go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.2
+```
+
 ## Env variables
 
 Create .env file and put it in a project root

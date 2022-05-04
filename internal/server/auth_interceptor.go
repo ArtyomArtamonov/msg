@@ -12,21 +12,24 @@ import (
 )
 
 type AuthInterceptor struct {
-	jwtManager      *service.JWTManager
-	accessibleRoles map[string][]string
+	jwtManager    service.JWTManagerProtol
+	endpointRoles EndpointRoles
 }
 
-func NewAuthInterceptor(jwtManager *service.JWTManager, accessibleRoles map[string][]string) *AuthInterceptor {
+func NewAuthInterceptor(jwtManager service.JWTManagerProtol, endpointRoles EndpointRoles) *AuthInterceptor {
 	return &AuthInterceptor{
-		jwtManager:      jwtManager,
-		accessibleRoles: accessibleRoles,
+		jwtManager:    jwtManager,
+		endpointRoles: endpointRoles,
 	}
 }
 
 func (i *AuthInterceptor) Unary() grpc.UnaryServerInterceptor {
-	return func(ctx context.Context, req interface{},
+	return func(
+		ctx context.Context,
+		req interface{},
 		info *grpc.UnaryServerInfo,
-		handler grpc.UnaryHandler) (interface{}, error) {
+		handler grpc.UnaryHandler,
+	) (interface{}, error) {
 		logrus.Trace("Unary auth interceptor here: ", info.FullMethod)
 
 		err := i.authorize(ctx, info.FullMethod)
@@ -39,24 +42,27 @@ func (i *AuthInterceptor) Unary() grpc.UnaryServerInterceptor {
 }
 
 func (i *AuthInterceptor) Stream() grpc.StreamServerInterceptor {
-	return func(srv interface{}, ss grpc.ServerStream,
+	return func(
+		srv interface{},
+		stream grpc.ServerStream,
 		info *grpc.StreamServerInfo,
-		handler grpc.StreamHandler) error {
+		handler grpc.StreamHandler,
+	) error {
 		logrus.Trace("Streaming auth interceptor here: ", info.FullMethod)
 
-		err := i.authorize(ss.Context(), info.FullMethod)
+		err := i.authorize(stream.Context(), info.FullMethod)
 		if err != nil {
 			return err
 		}
 
-		return handler(srv, ss)
+		return handler(srv, stream)
 	}
 }
 
 func (i *AuthInterceptor) authorize(ctx context.Context, method string) error {
-	accessibleRoles, ok := i.accessibleRoles[method]
-	if !ok {
-		// everyone have access
+	endpointRoles, ok := i.endpointRoles[method]
+	if endpointRoles == nil || !ok {
+		// anyone has access
 		return nil
 	}
 
@@ -65,7 +71,7 @@ func (i *AuthInterceptor) authorize(ctx context.Context, method string) error {
 		return err
 	}
 
-	for _, role := range accessibleRoles {
+	for _, role := range endpointRoles {
 		if role == claims.Role {
 			return nil
 		}

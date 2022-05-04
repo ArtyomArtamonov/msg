@@ -52,7 +52,7 @@ func (s *AuthServer) Register(ctx context.Context, req *pb.RegisterRequest) (*pb
 
 	tokenPair, err := s.jwtManager.Generate(user)
 	if err != nil {
-		return nil, err
+		return nil, status.Error(codes.Internal, "could not generate token pair")
 	}
 
 	if err := s.userStore.Save(user); err != nil {
@@ -60,7 +60,7 @@ func (s *AuthServer) Register(ctx context.Context, req *pb.RegisterRequest) (*pb
 	}
 
 	if err := s.refreshTokenStore.Add(tokenPair.RefreshToken); err != nil {
-		return nil, status.Errorf(codes.Internal, "could not add refresh key to database: %v", err)
+		return nil, status.Errorf(codes.Internal, "could not save refresh token to database: %v", err)
 	}
 
 	response := pb.TokenResponse{
@@ -83,7 +83,7 @@ func (s *AuthServer) Login(ctx context.Context, req *pb.LoginRequest) (*pb.Token
 
 	tokenPair, err := s.jwtManager.Generate(user)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "could not generate access token")
+		return nil, status.Error(codes.Internal, "could not generate token pair")
 	}
 
 	if err := s.refreshTokenStore.Add(tokenPair.RefreshToken); err != nil {
@@ -118,7 +118,7 @@ func (s *AuthServer) Refresh(ctx context.Context, req *pb.RefreshRequest) (*pb.T
 
 	user, err := s.userStore.Find(token.UserId)
 	if err != nil {
-		logrus.Errorf("needs to be investigated: %v", err)
+		logrus.Errorf("refresh token checks above should have failed, needs to be investigated: %v", err)
 		return nil, status.Error(codes.Internal, "hmm... this is strange. That could not possibly happen")
 	}
 

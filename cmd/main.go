@@ -4,8 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"net"
-	"os"
-	"strconv"
 	"time"
 
 	"github.com/ArtyomArtamonov/msg/internal/model"
@@ -30,7 +28,9 @@ func main() {
 		logrus.Fatal("Error loading .env file: ", err)
 	}
 
-	host := os.Getenv("HOST")
+	env := server.NewEnv()
+
+	host := env.HOST
 	lis, err := net.Listen("tcp", host)
 	if err != nil {
 		logrus.Fatal(err.Error())
@@ -38,7 +38,10 @@ func main() {
 
 	connectionString := fmt.Sprintf(
 		"host=database port=5432 sslmode=disable dbname=%s user=%s password=%s",
-		os.Getenv("POSTGRES_DB"), os.Getenv("POSTGRES_USER"), os.Getenv("POSTGRES_PASSWORD"))
+		env.POSTGRES_DB,
+		env.POSTGRES_USER,
+		env.POSTGRES_PASSWORD,
+	)
 	db, err := sql.Open("postgres", connectionString)
 	if err != nil {
 		logrus.Fatal("could not connect to database")
@@ -48,7 +51,7 @@ func main() {
 	}
 	defer db.Close()
 
-	grpcServer := createAndPrepareGRPCServer(db)
+	grpcServer := createAndPrepareGRPCServer(db, env)
 
 	logrus.Info("Starting grpc server on ", host)
 	if err := grpcServer.Serve(lis); err != nil {
@@ -56,18 +59,9 @@ func main() {
 	}
 }
 
-func createAndPrepareGRPCServer(db *sql.DB) *grpc.Server {
-	jwtDurationMin, err := strconv.Atoi(os.Getenv("JWT_DURATION_MIN"))
-	if err != nil {
-		logrus.Fatal("Could not get JWT_DURATION_MIN env variable (should be a number of minutes token expiration time)")
-	}
-
-	refreshDurationDays, err := strconv.Atoi(os.Getenv("REFRESH_DURATION_DAYS"))
-	if err != nil {
-		logrus.Fatal("Could not get REFRESH_DURATION_DAYS env variable (should be a number of days refresh token expiration time)")
-	}
-
-	jwtSecret := os.Getenv("JWT_SECRET")
+func createAndPrepareGRPCServer(db *sql.DB, env *server.Env) *grpc.Server {
+	endpoints := server.NewEndpoints()
+	endpointRoles := server.NewEndpointRoles(endpoints)
 
 	// AUTH
 	userStore := repository.NewPostgresUserStore(db)
@@ -90,10 +84,14 @@ func createAndPrepareGRPCServer(db *sql.DB) *grpc.Server {
 			logrus.Error(err)
 		}
 	}
-	jwtManager := service.NewJWTManager(jwtSecret, time.Minute*time.Duration(jwtDurationMin), time.Hour*24*time.Duration(refreshDurationDays))
-	
+	jwtManager := service.NewJWTManager(
+		env.JWT_SECRET,
+		time.Minute*time.Duration(env.JWT_DURATION_MIN),
+		time.Hour*24*time.Duration(env.REFRESH_DURATION_DAYS),
+	)
+
 	authServer := server.NewAuthServer(userStore, refreshTokenStore, jwtManager)
-	authInterceptor := server.NewAuthInterceptor(jwtManager, accessibleRoles())
+	authInterceptor := server.NewAuthInterceptor(jwtManager, endpointRoles)
 
 	// MESSAGE
 	sessionStore := repository.NewInMemorySessionStore()
@@ -115,20 +113,4 @@ func createAndPrepareGRPCServer(db *sql.DB) *grpc.Server {
 	reflection.Register(grpcServer)
 
 	return grpcServer
-}
-
-func accessibleRoles() map[string][]string {
-	const authService = "/message.AuthService/"
-	const messageService = "/message.MessageService/"
-	const apiService = "/message.ApiService/"
-
-	return map[string][]string{
-		messageService + "SendMessage": {model.ADMIN_ROLE, model.USER_ROLE},
-		messageService + "GetMessages": {model.ADMIN_ROLE, model.USER_ROLE},
-
-		authService + "Refresh": {model.ADMIN_ROLE, model.USER_ROLE},
-
-		apiService + "CreateRoom": {model.ADMIN_ROLE, model.USER_ROLE},
-		apiService + "ListRooms": {model.ADMIN_ROLE, model.USER_ROLE},
-	}
 }

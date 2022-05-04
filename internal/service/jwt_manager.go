@@ -90,7 +90,7 @@ func (m *JWTManager) NewRefreshToken(userId uuid.UUID) *model.RefreshToken {
 	return token
 }
 
-func GetAndVerifyClaimsFromContext(ctx context.Context, jwtManager *JWTManager) (*model.UserClaims, error) {
+func GetAndVerifyClaimsFromContext(ctx context.Context, jwtManager JWTManagerProtol) (*model.UserClaims, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		return nil, status.Error(codes.Unauthenticated, "metadata is not provided")
@@ -104,7 +104,7 @@ func GetAndVerifyClaimsFromContext(ctx context.Context, jwtManager *JWTManager) 
 	accessToken := values[0]
 	claims, err := jwtManager.Verify(accessToken)
 	if err != nil {
-		return nil, status.Errorf(codes.Unauthenticated, "access token is invalid: %v", err)
+		return nil, status.Errorf(codes.Unauthenticated, "authorization token is invalid: %v", err)
 	}
 	return claims, nil
 }

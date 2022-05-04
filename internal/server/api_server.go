@@ -20,11 +20,11 @@ import (
 type ApiServer struct {
 	pb.UnimplementedApiServiceServer
 
-	jwtManager *service.JWTManager
+	jwtManager service.JWTManagerProtol
 	roomStore  repository.RoomStore
 }
 
-func NewApiServer(jwtManager *service.JWTManager, roomStore repository.RoomStore) *ApiServer {
+func NewApiServer(jwtManager service.JWTManagerProtol, roomStore repository.RoomStore) *ApiServer {
 	return &ApiServer{
 		jwtManager: jwtManager,
 		roomStore:  roomStore,
@@ -40,6 +40,7 @@ func (s *ApiServer) CreateRoom(ctx context.Context, req *pb.CreateRoomRequest) (
 		return nil, status.Error(codes.InvalidArgument, "dialog room cannot have more than 2 users")
 	}
 
+	// TODO: remove this, this logic should be hidden from the client - we should create new dialog seamlessly, when user sends his first message in chat room
 	if req.IsDialogRoom && len(req.Users) == 2 {
 		id1, err := uuid.Parse(req.Users[0])
 		if err != nil {

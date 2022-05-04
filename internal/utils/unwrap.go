@@ -2,7 +2,7 @@ package utils
 
 // Unwrap
 //
-// Safely casts object to error.
+// Safely casts object to [T].
 //
 // We need this, because there's no way to check if [T] is [nil] prematurely,
 // otherwise we fall into error trying to cast [nil] to [T].

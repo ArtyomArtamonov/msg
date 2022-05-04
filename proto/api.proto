@@ -20,7 +20,6 @@ message ListRoomsRequest {
 
 service ApiService {
     rpc CreateRoom(CreateRoomRequest) returns (CreateRoomStatus);
-
     rpc ListRooms(ListRoomsRequest) returns (ListRoomsResponse);
 }
 
