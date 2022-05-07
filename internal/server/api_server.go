@@ -52,7 +52,7 @@ func (s *ApiServer) CreateRoom(ctx context.Context, req *pb.CreateRoomRequest) (
 			return nil, status.Error(codes.InvalidArgument, "could not parse uuid")
 		}
 
-		room, err := s.roomStore.FindDialogRoom(id1, id2)
+		room, err := s.roomStore.FindDialogRoom(ctx, id1, id2)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			st, ok := status.FromError(err)
 			if ok && st.Code() == codes.AlreadyExists {
@@ -69,7 +69,7 @@ func (s *ApiServer) CreateRoom(ctx context.Context, req *pb.CreateRoomRequest) (
 	}
 
 	newRoom := model.NewRoom(req.Name, req.IsDialogRoom, req.Users...)
-	err := s.roomStore.Add(newRoom)
+	err := s.roomStore.Add(ctx, newRoom)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "cannot create room: %v", err)
 	}
@@ -100,13 +100,13 @@ func (s *ApiServer) ListRooms(ctx context.Context, req *pb.ListRoomsRequest) (*p
 
 	var rooms []model.Room
 	if req.PageToken == nil {
-		rooms, err = s.roomStore.ListRoomsFirst(userId, int(req.PageSize))
+		rooms, err = s.roomStore.ListRoomsFirst(ctx, userId, int(req.PageSize))
 	} else {
 		lastMessageTime, e := decodePageToken(req.PageToken.Value)
 		if e != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "cannot parse next token: %v", e)
 		}
-		rooms, err = s.roomStore.ListRooms(userId, *lastMessageTime, int(req.PageSize))
+		rooms, err = s.roomStore.ListRooms(ctx, userId, *lastMessageTime, int(req.PageSize))
 	}
 
 	if err != nil {

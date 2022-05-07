@@ -1,7 +1,7 @@
 package main
 
 import (
-	"database/sql"
+	"context"
 	"fmt"
 	"net"
 	"time"
@@ -10,6 +10,10 @@ import (
 	"github.com/ArtyomArtamonov/msg/internal/repository"
 	"github.com/ArtyomArtamonov/msg/internal/server"
 	"github.com/ArtyomArtamonov/msg/internal/service"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+	pgtypeuuid "github.com/vgarvardt/pgx-google-uuid/v5"
 
 	pb "github.com/ArtyomArtamonov/msg/internal/server/proto"
 
@@ -27,7 +31,6 @@ func main() {
 	if err != nil {
 		logrus.Fatal("Error loading .env file: ", err)
 	}
-
 	env := server.NewEnv()
 
 	host := env.HOST
@@ -37,16 +40,26 @@ func main() {
 	}
 
 	connectionString := fmt.Sprintf(
-		"host=database port=5432 sslmode=disable dbname=%s user=%s password=%s",
-		env.POSTGRES_DB,
+		"postgres://%s:%s@database:5432/%s",
+
 		env.POSTGRES_USER,
 		env.POSTGRES_PASSWORD,
+		env.POSTGRES_DB,
 	)
-	db, err := sql.Open("postgres", connectionString)
+
+	dbconfig, err := pgxpool.ParseConfig(connectionString)
+	if err != nil {
+		logrus.Fatal("could not parse database config")
+	}
+	dbconfig.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
+		pgtypeuuid.Register(conn.TypeMap())
+		return nil
+	}
+	db, err := pgxpool.ConnectConfig(context.Background(), dbconfig)
 	if err != nil {
 		logrus.Fatal("could not connect to database")
 	}
-	if err := db.Ping(); err != nil {
+	if err := db.Ping(context.Background()); err != nil {
 		logrus.Fatalf("could not ping database: %v", err)
 	}
 	defer db.Close()
@@ -59,7 +72,7 @@ func main() {
 	}
 }
 
-func createAndPrepareGRPCServer(db *sql.DB, env *server.Env) *grpc.Server {
+func createAndPrepareGRPCServer(db *pgxpool.Pool, env *server.Env) *grpc.Server {
 	endpoints := server.NewEndpoints()
 	endpointRoles := server.NewEndpointRoles(endpoints)
 
@@ -72,7 +85,8 @@ func createAndPrepareGRPCServer(db *sql.DB, env *server.Env) *grpc.Server {
 		if err != nil {
 			logrus.Error(err)
 		}
-		if err := userStore.Save(user); err != nil {
+		//SHOULD BE REMOVED IN FUTURE
+		if err := userStore.Save(context.Background(), user); err != nil {
 			logrus.Error(err)
 		}
 
@@ -80,7 +94,8 @@ func createAndPrepareGRPCServer(db *sql.DB, env *server.Env) *grpc.Server {
 		if err != nil {
 			logrus.Error(err)
 		}
-		if err := userStore.Save(admin); err != nil {
+		//SHOULD BE REMOVED IN FUTURE
+		if err := userStore.Save(context.Background(), admin); err != nil {
 			logrus.Error(err)
 		}
 	}
