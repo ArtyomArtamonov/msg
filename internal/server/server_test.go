@@ -2,6 +2,7 @@ package server
 
 import (
 	"github.com/ArtyomArtamonov/msg/internal/mocks"
+	"github.com/ArtyomArtamonov/msg/internal/utils"
 )
 
 var jwtManagerMock *mocks.JWTManagerMock
@@ -12,6 +13,7 @@ var apiServer *ApiServer
 var authServer *AuthServer
 
 func setupTest() {
+	utils.MockNow(utils.DefaultMockTime)
 	jwtManagerMock = new(mocks.JWTManagerMock)
 	refreshTokenStoreMock = new(mocks.RefreshTokenStoreMock)
 	roomStoreMock = new(mocks.RoomStoreMock)

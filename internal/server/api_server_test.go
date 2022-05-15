@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"testing"
-	"time"
 
 	"github.com/ArtyomArtamonov/msg/internal/model"
 	"github.com/ArtyomArtamonov/msg/internal/server/proto"
+	"github.com/ArtyomArtamonov/msg/internal/utils"
 	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -196,7 +196,7 @@ func TestApiServer_ListRoomsFailsIfDatabaseFailsWithNoPageToken(t *testing.T) {
 func TestApiServer_ListRoomsFailsIfDatabaseFailsWithPageTokenPresent(t *testing.T) {
 	setupTest()
 
-	token := encodePageToken(time.Now())
+	token := encodePageToken(utils.Now())
 	lastMessageTime, _ := decodePageToken(token)
 	expectedError := errors.New("some_error")
 

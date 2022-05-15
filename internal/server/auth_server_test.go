@@ -8,6 +8,7 @@ import (
 
 	"github.com/ArtyomArtamonov/msg/internal/model"
 	pb "github.com/ArtyomArtamonov/msg/internal/server/proto"
+	"github.com/ArtyomArtamonov/msg/internal/utils"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -131,8 +132,8 @@ func TestAuthServer_RegisterFailsIfRefreshTokenStoreFails(t *testing.T) {
 		RefreshToken: &model.RefreshToken{
 			Token:     uuid.New(),
 			UserId:    uuid.New(),
-			ExpiresAt: time.Now(),
-			IssuedAt:  time.Now(),
+			ExpiresAt: utils.Now(),
+			IssuedAt:  utils.Now(),
 		},
 	}, nil)
 	userStoreMock.On("Save", mock.Anything).Return(nil)
@@ -159,8 +160,8 @@ func TestAuthServer_RegisterSuccess(t *testing.T) {
 		RefreshToken: &model.RefreshToken{
 			Token:     uuid.New(),
 			UserId:    uuid.New(),
-			ExpiresAt: time.Now(),
-			IssuedAt:  time.Now(),
+			ExpiresAt: utils.Now(),
+			IssuedAt:  utils.Now(),
 		},
 	}
 
@@ -273,8 +274,8 @@ func TestAuthServer_LoginFailsIfRefreshTokenStoreFails(t *testing.T) {
 		RefreshToken: &model.RefreshToken{
 			Token:     uuid.New(),
 			UserId:    uuid.New(),
-			ExpiresAt: time.Now(),
-			IssuedAt:  time.Now(),
+			ExpiresAt: utils.Now(),
+			IssuedAt:  utils.Now(),
 		},
 	}, nil)
 	refreshTokenStoreMock.On("Add", mock.Anything).Return(expectedError)
@@ -300,8 +301,8 @@ func TestAuthServer_LoginSuccess(t *testing.T) {
 		RefreshToken: &model.RefreshToken{
 			Token:     uuid.New(),
 			UserId:    uuid.New(),
-			ExpiresAt: time.Now(),
-			IssuedAt:  time.Now(),
+			ExpiresAt: utils.Now(),
+			IssuedAt:  utils.Now(),
 		},
 	}
 
@@ -372,8 +373,8 @@ func TestAuthServer_RefreshFailsIfRefreshTokenExpires(t *testing.T) {
 	refreshToken := &model.RefreshToken{
 		Token:     refreshTokenUuid,
 		UserId:    uuid.New(),
-		ExpiresAt: time.Now().Add(-time.Second),
-		IssuedAt:  time.Now(),
+		ExpiresAt: utils.Now().Add(-time.Second),
+		IssuedAt:  utils.Now(),
 	}
 
 	refreshTokenStoreMock.On("Get", refreshTokenUuid).Return(refreshToken, nil)
@@ -397,8 +398,8 @@ func TestAuthServer_RefreshFailsIfUserIsNotFound(t *testing.T) {
 	refreshToken := &model.RefreshToken{
 		Token:     refreshTokenUuid,
 		UserId:    userUuid,
-		ExpiresAt: time.Now(),
-		IssuedAt:  time.Now(),
+		ExpiresAt: utils.Now(),
+		IssuedAt:  utils.Now(),
 	}
 	expectedError := errors.New("some_error")
 
@@ -423,8 +424,8 @@ func TestAuthServer_RefreshFailsIfJWTFails(t *testing.T) {
 	refreshToken := &model.RefreshToken{
 		Token:     refreshTokenUuid,
 		UserId:    userUuid,
-		ExpiresAt: time.Now(),
-		IssuedAt:  time.Now(),
+		ExpiresAt: utils.Now(),
+		IssuedAt:  utils.Now(),
 	}
 	expectedError := errors.New("some_error")
 
@@ -451,8 +452,8 @@ func TestAuthServer_RefreshFailsIfDeletingTokenFails(t *testing.T) {
 	refreshToken := &model.RefreshToken{
 		Token:     refreshTokenUuid,
 		UserId:    userUuid,
-		ExpiresAt: time.Now(),
-		IssuedAt:  time.Now(),
+		ExpiresAt: utils.Now(),
+		IssuedAt:  utils.Now(),
 	}
 	expectedError := errors.New("some_error")
 
@@ -481,8 +482,8 @@ func TestAuthServer_RefreshFailsIfCreatingTokenFails(t *testing.T) {
 		RefreshToken: &model.RefreshToken{
 			Token:     refreshTokenUuid,
 			UserId:    userUuid,
-			ExpiresAt: time.Now(),
-			IssuedAt:  time.Now(),
+			ExpiresAt: utils.Now(),
+			IssuedAt:  utils.Now(),
 		},
 	}
 	expectedError := errors.New("some_error")
@@ -513,8 +514,8 @@ func TestAuthServer_RefreshSuccess(t *testing.T) {
 		RefreshToken: &model.RefreshToken{
 			Token:     refreshTokenUuid,
 			UserId:    userUuid,
-			ExpiresAt: time.Now(),
-			IssuedAt:  time.Now(),
+			ExpiresAt: utils.Now(),
+			IssuedAt:  utils.Now(),
 		},
 	}
 

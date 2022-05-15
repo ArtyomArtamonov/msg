@@ -6,6 +6,7 @@ import (
 
 	"github.com/ArtyomArtamonov/msg/internal/model"
 	pb "github.com/ArtyomArtamonov/msg/internal/server/proto"
+	"github.com/ArtyomArtamonov/msg/internal/utils"
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -47,7 +48,7 @@ func (s *InMemorySessionStore) Send(id uuid.UUID, message *pb.MessageResponse) e
 		return status.Errorf(codes.Unavailable, "User %s is not connected to session", id)
 	}
 
-	if time.Duration(time.Now().Unix()) >= session.Expires {
+	if time.Duration(utils.Now().Unix()) >= session.Expires {
 		return status.Errorf(codes.Unauthenticated, "JWT is expired")
 	}
 
@@ -66,7 +67,7 @@ func (s *InMemorySessionStore) Delete(id uuid.UUID) error {
 
 	s.mutex.Unlock()
 	delete(s.sessions, id)
-	
+
 	session.Done <- struct{}{}
 	return nil
 }

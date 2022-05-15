@@ -4,6 +4,7 @@ import (
 	"time"
 
 	pb "github.com/ArtyomArtamonov/msg/internal/server/proto"
+	"github.com/ArtyomArtamonov/msg/internal/utils"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/google/uuid"
@@ -22,10 +23,10 @@ func NewRoom(name string, dialogRoom bool, users ...string) *Room {
 	return &Room{
 		Id:              uuid.New(),
 		Name:            name,
-		CreatedAt:       time.Now(),
+		CreatedAt:       utils.Now(),
 		Users:           users,
 		DialogRoom:      dialogRoom,
-		LastMessageTime: time.Now(),
+		LastMessageTime: utils.Now(),
 	}
 }
 
