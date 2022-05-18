@@ -2,9 +2,7 @@ package server
 
 import (
 	"context"
-	"database/sql"
 	"encoding/base64"
-	"errors"
 	"time"
 
 	"github.com/ArtyomArtamonov/msg/internal/model"
@@ -32,43 +30,11 @@ func NewApiServer(jwtManager service.JWTManagerProtol, roomStore repository.Room
 }
 
 func (s *ApiServer) CreateRoom(ctx context.Context, req *pb.CreateRoomRequest) (*pb.CreateRoomStatus, error) {
-	if len(req.Users) < 2 {
+	if len(req.UserIds) < 2 {
 		return nil, status.Error(codes.InvalidArgument, "cannot be less than 2 users")
 	}
 
-	if req.IsDialogRoom && len(req.Users) != 2 {
-		return nil, status.Error(codes.InvalidArgument, "dialog room cannot have more than 2 users")
-	}
-
-	// TODO: remove this, this logic should be hidden from the client - we should create new dialog seamlessly, when user sends his first message in chat room
-	if req.IsDialogRoom && len(req.Users) == 2 {
-		id1, err := uuid.Parse(req.Users[0])
-		if err != nil {
-			return nil, status.Error(codes.InvalidArgument, "could not parse uuid")
-		}
-
-		id2, err := uuid.Parse(req.Users[1])
-		if err != nil {
-			return nil, status.Error(codes.InvalidArgument, "could not parse uuid")
-		}
-
-		room, err := s.roomStore.FindDialogRoom(id1, id2)
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			st, ok := status.FromError(err)
-			if ok && st.Code() == codes.AlreadyExists {
-				createRoomStatus := &pb.CreateRoomStatus{
-					RoomId: room.Id.String(),
-					Name:   room.Name,
-					Users:  req.Users,
-				}
-				return createRoomStatus, err
-			} else {
-				return nil, status.Errorf(codes.Internal, "cannot create room: %v", err)
-			}
-		}
-	}
-
-	newRoom := model.NewRoom(req.Name, req.IsDialogRoom, req.Users...)
+	newRoom := model.NewRoom(req.Name, false)
 	err := s.roomStore.Add(newRoom)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "cannot create room: %v", err)
@@ -77,7 +43,7 @@ func (s *ApiServer) CreateRoom(ctx context.Context, req *pb.CreateRoomRequest) (
 	createRoomStatus := &pb.CreateRoomStatus{
 		RoomId: newRoom.Id.String(),
 		Name:   newRoom.Name,
-		Users:  req.Users,
+		Users:  req.UserIds,
 	}
 
 	return createRoomStatus, nil
@@ -140,7 +106,60 @@ func (s *ApiServer) ListRooms(ctx context.Context, req *pb.ListRoomsRequest) (*p
 	}
 
 	return listRoomsResponse, nil
+}
 
+func (s *ApiServer) SendMessage(ctx context.Context, req *pb.MessageRequest) (*pb.MessageResponse, error) {
+	claims, err := s.jwtManager.GetAndVerifyClaims(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	senderId, err := uuid.Parse(claims.Id)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "could not parse uuid")
+	}
+
+	room, ok := req.Recipient.(*pb.MessageRequest_RoomId)
+
+	if !ok {
+		// Dialog room is not created, first message is about to send
+		userId := req.Recipient.(*pb.MessageRequest_UserId)
+
+		recipientId, err := uuid.Parse(userId.UserId)
+		if err != nil {
+			return nil, status.Error(codes.InvalidArgument, "could not parse uuid")
+		}
+
+		room := model.NewRoom("", true, senderId, recipientId)
+		message := model.NewMessage(senderId, uuid.Nil, req.Message)
+		roomResponse, err := s.roomStore.AddAndSendMessage(room, message)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "could not create room or send message: ", err)
+		}
+		response := &pb.MessageResponse{
+			RoomId:  roomResponse.PbRoom().Id,
+			Message: message.ToPbMessage(),
+		}
+		return response, nil
+	}
+
+	// Sending message to already existing room
+	roomId, err := uuid.Parse(room.RoomId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "could not parse uuid")
+	}
+
+	message := model.NewMessage(senderId, roomId, req.Message)
+	err = s.roomStore.SendMessage(roomId, message)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "could not send message: ", err)
+	}
+
+	response := &pb.MessageResponse{
+		RoomId:  room.RoomId,
+		Message: message.ToPbMessage(),
+	}
+	return response, nil
 }
 
 func decodePageToken(token string) (*time.Time, error) {

@@ -13,17 +13,17 @@ type Room struct {
 	Id              uuid.UUID
 	Name            string
 	CreatedAt       time.Time
-	Users           []string
+	UserIds         []uuid.UUID
 	DialogRoom      bool
 	LastMessageTime time.Time
 }
 
-func NewRoom(name string, dialogRoom bool, users ...string) *Room {
+func NewRoom(name string, dialogRoom bool, users ...uuid.UUID) *Room {
 	return &Room{
 		Id:              uuid.New(),
 		Name:            name,
 		CreatedAt:       time.Now(),
-		Users:           users,
+		UserIds:         users,
 		DialogRoom:      dialogRoom,
 		LastMessageTime: time.Now(),
 	}

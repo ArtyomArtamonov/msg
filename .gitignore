@@ -1,4 +1,5 @@
 .env
+.vscode
 docker-compose.env
 pgadmin
 bin

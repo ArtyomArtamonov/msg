@@ -9,8 +9,7 @@ option go_package = "github.com/ArtyomArtamonov/msg/internal/server/proto";
 
 message CreateRoomRequest {
     string name = 1;
-    bool is_dialog_room = 2;
-    repeated string users = 3;
+    repeated string user_ids = 2;
 }
 
 message ListRoomsRequest {
@@ -18,9 +17,32 @@ message ListRoomsRequest {
     int32 page_size = 2;
 }
 
+message MessageRequest {
+    string message = 1;
+    oneof recipient {
+        string user_id = 2;
+        string room_id = 3;
+    }
+}
+
 service ApiService {
     rpc CreateRoom(CreateRoomRequest) returns (CreateRoomStatus);
     rpc ListRooms(ListRoomsRequest) returns (ListRoomsResponse);
+
+    rpc SendMessage(MessageRequest) returns (MessageResponse);
+}
+
+message MessageResponse {
+    string room_id = 1;
+    Message message = 2;
+}
+
+message Message {
+    string id = 1;
+    string room_id = 2;
+    string user_id = 3;
+    string text = 4;
+    google.protobuf.Timestamp created_at = 5;
 }
 
 message ListRoomsResponse {

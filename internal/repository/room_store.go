@@ -14,10 +14,12 @@ import (
 
 type RoomStore interface {
 	Add(room *model.Room) error
+	AddAndSendMessage(room *model.Room, message *model.Message) (*model.Room, error)
+	SendMessage(roomId uuid.UUID, message *model.Message) (error)
 	Get(id uuid.UUID) (*model.Room, error)
 	FindDialogRoom(userId1, userId2 uuid.UUID) (*model.Room, error)
 	UsersInRoom(id uuid.UUID) ([]model.User, error)
-	FindByIds(usernames ...string) ([]model.User, error)
+	FindByIds(ids ...uuid.UUID) ([]model.User, error)
 	ListRooms(userId uuid.UUID, lastMessageDate time.Time, pageSize int) ([]model.Room, error)
 	ListRoomsFirst(userId uuid.UUID, pageSize int) ([]model.Room, error)
 }
@@ -45,21 +47,67 @@ func (s *PostgresRoomStore) Add(room *model.Room) error {
 		return err
 	}
 
-	users, err := s.FindByIds(room.Users...)
-	if err != nil {
-		return err
-	}
-
-	for _, user := range users {
+	for _, userId := range room.UserIds {
 		var room_id uuid.UUID
 		err = tx.QueryRow("INSERT INTO user_in_room(room_id, user_id) VALUES($1, $2) RETURNING room_id",
-			room.Id, user.Id).Scan(&room_id)
+			room.Id, userId).Scan(&room_id)
 		if err != nil {
 			return err
 		}
 	}
 
 	return tx.Commit()
+}
+
+func (s *PostgresRoomStore) AddAndSendMessage(room *model.Room, message *model.Message) (*model.Room, error) {
+	// Check if dialog room is already exists
+	r, err := s.FindDialogRoom(room.UserIds[0], room.UserIds[1])
+	if status.Code(err) == codes.AlreadyExists {
+		message.RoomId = r.Id
+		return r, s.SendMessage(r.Id, message)
+	}
+
+	tx, err := s.db.BeginTx(context.TODO(), nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	err = tx.QueryRow("INSERT INTO rooms(id, name, created_at, dialog_room, last_message_time) VALUES($1, $2, $3, $4, $5) RETURNING id",
+		room.Id, room.Name, room.CreatedAt, room.DialogRoom, room.LastMessageTime).Scan(&room.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, userId := range room.UserIds {
+		var room_id uuid.UUID
+		err = tx.QueryRow("INSERT INTO user_in_room(room_id, user_id) VALUES($1, $2) RETURNING room_id",
+			room.Id, userId).Scan(&room_id)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	message.RoomId = room.Id
+	var messageId uuid.UUID
+	err = tx.QueryRow("INSERT INTO messages(id, room_id, user_id, text, created_at) VALUES($1, $2, $3, $4, $5) RETURNING id",
+	message.Id, message.RoomId, message.UserId, message.Text, message.CreatedAt).Scan(&messageId)
+	if err != nil {
+		return nil, err
+	}
+
+	message.Id = messageId
+
+	return room, tx.Commit()
+}
+
+func (s *PostgresRoomStore) SendMessage(roomId uuid.UUID, message *model.Message) (error) {
+	var messageId uuid.UUID
+	err := s.db.QueryRow("INSERT INTO messages(id, room_id, user_id, text, created_at) VALUES($1, $2, $3, $4, $5) RETURNING id",
+	message.Id, message.RoomId, message.UserId, message.Text, message.CreatedAt).Scan(&messageId)
+	message.Id = messageId
+
+	return err
 }
 
 func (s *PostgresRoomStore) Get(id uuid.UUID) (*model.Room, error) {
@@ -111,7 +159,7 @@ func (s *PostgresRoomStore) UsersInRoom(id uuid.UUID) ([]model.User, error) {
 	return users, nil
 }
 
-func (s *PostgresRoomStore) FindByIds(ids ...string) ([]model.User, error) {
+func (s *PostgresRoomStore) FindByIds(ids ...uuid.UUID) ([]model.User, error) {
 	q := "SELECT id, username, password_hash, role FROM users WHERE"
 	for _, name := range ids {
 		q += fmt.Sprintf(" id='%s' OR", name)

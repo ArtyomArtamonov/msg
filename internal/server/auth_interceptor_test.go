@@ -78,7 +78,7 @@ func TestAuthInterceptor_UnaryFailsWithoutEndpointPermissions(t *testing.T) {
 func TestAuthInterceptor_UnarySussessForAnyone(t *testing.T) {
 	setupTest()
 
-	expectedRequest := &pb.MessageRequest{
+	expectedRequest := &pb.MessageRequestM{
 		To:      "some_user",
 		Message: "some message",
 	}
@@ -117,7 +117,7 @@ func TestAuthInterceptor_UnarySussessForAnyone(t *testing.T) {
 func TestAuthInterceptor_UnarySussessWithPermissions(t *testing.T) {
 	setupTest()
 
-	expectedRequest := &pb.MessageRequest{
+	expectedRequest := &pb.MessageRequestM{
 		To:      "some_user",
 		Message: "some message",
 	}

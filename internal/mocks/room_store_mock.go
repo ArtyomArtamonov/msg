@@ -18,6 +18,16 @@ func (m *RoomStoreMock) Add(room *model.Room) error {
 	return utils.Unwrap[error](args.Get(0))
 }
 
+func (m *RoomStoreMock) AddAndSendMessage(room *model.Room, message *model.Message) (*model.Room, error) {
+	args := m.Called(room, message)
+	return utils.Unwrap[*model.Room](args.Get(0)), utils.Unwrap[error](args.Get(1))
+}
+
+func (m *RoomStoreMock) SendMessage(roomId uuid.UUID, message *model.Message) (error) {
+	args := m.Called(roomId, message)
+	return utils.Unwrap[error](args.Get(0))
+}
+
 func (m *RoomStoreMock) Get(id uuid.UUID) (*model.Room, error) {
 	args := m.Called(id)
 	return utils.Unwrap[*model.Room](args.Get(0)), utils.Unwrap[error](args.Get(1))
@@ -33,8 +43,8 @@ func (m *RoomStoreMock) UsersInRoom(id uuid.UUID) ([]model.User, error) {
 	return utils.Unwrap[[]model.User](args.Get(0)), utils.Unwrap[error](args.Get(1))
 }
 
-func (m *RoomStoreMock) FindByIds(usernames ...string) ([]model.User, error) {
-	args := m.Called(usernames)
+func (m *RoomStoreMock) FindByIds(userIds ...uuid.UUID) ([]model.User, error) {
+	args := m.Called(userIds)
 	return utils.Unwrap[[]model.User](args.Get(0)), utils.Unwrap[error](args.Get(1))
 }
 
@@ -47,3 +57,4 @@ func (m *RoomStoreMock) ListRoomsFirst(userId uuid.UUID, pageSize int) ([]model.
 	args := m.Called(userId, pageSize)
 	return utils.Unwrap[[]model.Room](args.Get(0)), utils.Unwrap[error](args.Get(1))
 }
+

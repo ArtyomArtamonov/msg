@@ -69,7 +69,7 @@ func (s *MessageServer) GetMessages(req *emptypb.Empty, srv pb.MessageService_Ge
 	return nil
 }
 
-func (s *MessageServer) SendMessage(ctx context.Context, req *pb.MessageRequest) (*pb.MessageRequestStatus, error) {
+func (s *MessageServer) SendMessage(ctx context.Context, req *pb.MessageRequestM) (*pb.MessageRequestStatus, error) {
 	claims, err := s.jwtManager.GetAndVerifyClaims(ctx)
 	if err != nil {
 		return nil, err
@@ -91,7 +91,7 @@ func (s *MessageServer) sendMessage(message string, to string, from string) erro
 		return fmt.Errorf("could not parse uuid from %s", from)
 	}
 
-	msg := pb.MessageResponse{
+	msg := pb.MessageResponseM{
 		From:    from,
 		Message: message,
 	}

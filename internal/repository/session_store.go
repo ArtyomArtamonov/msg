@@ -13,7 +13,7 @@ import (
 
 type SessionStore interface {
 	Add(*model.Session) error
-	Send(uuid.UUID, *pb.MessageResponse) error
+	Send(uuid.UUID, *pb.MessageResponseM) error
 	Delete(id uuid.UUID) error
 }
 
@@ -38,7 +38,7 @@ func (s *InMemorySessionStore) Add(session *model.Session) error {
 	return nil
 }
 
-func (s *InMemorySessionStore) Send(id uuid.UUID, message *pb.MessageResponse) error {
+func (s *InMemorySessionStore) Send(id uuid.UUID, message *pb.MessageResponseM) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
