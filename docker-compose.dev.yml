@@ -4,7 +4,7 @@ services:
     build:
       dockerfile: Dockerfile
       context: .
-      target: debug
+      target: api_debug
     ports:
       - 50051:50051
       - 2345:2345
@@ -12,11 +12,45 @@ services:
       - "seccomp:unconfined"
     depends_on:
       - database
+      - rabbitmq
     restart: unless-stopped
     volumes:
       - .:/app
     networks:
       - backend
+  
+  msg-message:
+    build:
+      dockerfile: Dockerfile
+      context: .
+      target: message_debug
+    ports:
+      - 50052:50052
+      - 2346:2346
+    security_opt:
+      - "seccomp:unconfined"
+    depends_on:
+      - database
+      - rabbitmq
+    restart: unless-stopped
+    volumes:
+      - .:/app
+    networks:
+      - backend
+  
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: 'rabbitmq'
+    ports:
+      - 5672:5672
+      - 15672:15672
+    volumes:
+      - rmqdata:/var/lib/rabbitmq/
+      - rmqlogs:/var/log/rabbitmq
+    networks:
+      - backend
+    environment:
+    - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
 
   database:
     image: postgres
@@ -68,3 +102,5 @@ networks:
 volumes:
     postgres:
     pgadmin:
+    rmqdata:
+    rmqlogs:

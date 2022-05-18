@@ -4,16 +4,46 @@ services:
     build:
       dockerfile: Dockerfile
       context: .
-      target: prod
+      target: api_prod
     ports:
       - 50051:50051
     depends_on:
       - database
+      - rabbitmq
     restart: unless-stopped
     volumes:
       - .:/app
     networks:
       - backend
+  
+  msg-message:
+    build:
+      dockerfile: Dockerfile
+      context: .
+      target: message_prod
+    ports:
+      - 50052:50052
+    depends_on:
+      - rabbitmq
+    restart: unless-stopped
+    volumes:
+      - .:/app
+    networks:
+      - backend
+      
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: 'rabbitmq'
+    ports:
+      - 5672:5672
+      - 15672:15672
+    volumes:
+      - rmqdata:/var/lib/rabbitmq/
+      - rmqlogs:/var/log/rabbitmq
+    networks:
+      - backend
+    environment:
+    - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
 
   database:
     image: postgres

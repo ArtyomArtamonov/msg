@@ -6,22 +6,11 @@ import "google/protobuf/empty.proto";
 
 option go_package = "github.com/ArtyomArtamonov/msg/internal/server/proto";
 
-message MessageRequestM {
-    string to = 1;
-    string message = 2;
-}
-
 service MessageService {
-    rpc GetMessages(google.protobuf.Empty) returns (stream MessageResponseM);
-    rpc SendMessage(MessageRequestM) returns (MessageRequestStatus);
+    rpc GetMessages(google.protobuf.Empty) returns (stream MessageResponseStream);
 }
 
-message MessageResponseM {
+message MessageResponseStream {
     string message = 1;
     string from = 2;
-}
-
-message MessageRequestStatus {
-    bool success = 1;
-    string message = 2;
 }

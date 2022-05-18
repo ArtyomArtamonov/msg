@@ -5,13 +5,23 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Remote docker",
+            "name": "Remote docker API",
             "type": "go",
             "request": "attach",
             "mode": "remote",
-            "remotePath": "/app/cmd",
+            "remotePath": "/app/cmd/api_service/",
             "cwd": "${workspaceRoot}/cmd",
             "port": 2345,
+            "host": "127.0.0.1"
+        },
+        {
+            "name": "Remote docker MESSAGE",
+            "type": "go",
+            "request": "attach",
+            "mode": "remote",
+            "remotePath": "/app/cmd/message_service/",
+            "cwd": "${workspaceRoot}/cmd",
+            "port": 2346,
             "host": "127.0.0.1"
         },
         {
