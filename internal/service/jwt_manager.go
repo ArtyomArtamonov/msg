@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/ArtyomArtamonov/msg/internal/model"
+	"github.com/ArtyomArtamonov/msg/internal/utils"
 	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
@@ -37,8 +38,8 @@ func NewJWTManager(secretKey string, tokenDuration, refreshTokenDuration time.Du
 func (m *JWTManager) Generate(user *model.User) (*model.TokenPair, error) {
 	claims := model.UserClaims{
 		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(m.tokenDuration).Unix(),
-			IssuedAt:  time.Now().Unix(),
+			ExpiresAt: utils.Now().Add(m.tokenDuration).Unix(),
+			IssuedAt:  utils.Now().Unix(),
 			Id:        user.Id.String(),
 			Subject:   user.Id.String(),
 		},
@@ -87,8 +88,8 @@ func (m *JWTManager) NewRefreshToken(userId uuid.UUID) *model.RefreshToken {
 	token := &model.RefreshToken{
 		Token:     uuid.New(),
 		UserId:    userId,
-		ExpiresAt: time.Now().Add(m.refreshTokenDuration),
-		IssuedAt:  time.Now(),
+		ExpiresAt: utils.Now().Add(m.refreshTokenDuration),
+		IssuedAt:  utils.Now(),
 	}
 	return token
 }

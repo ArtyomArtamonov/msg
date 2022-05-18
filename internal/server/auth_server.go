@@ -2,13 +2,13 @@ package server
 
 import (
 	"context"
-	"time"
 	"unicode/utf8"
 
 	"github.com/ArtyomArtamonov/msg/internal/model"
 	"github.com/ArtyomArtamonov/msg/internal/repository"
 	pb "github.com/ArtyomArtamonov/msg/internal/server/proto"
 	"github.com/ArtyomArtamonov/msg/internal/service"
+	"github.com/ArtyomArtamonov/msg/internal/utils"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
@@ -109,7 +109,7 @@ func (s *AuthServer) Refresh(ctx context.Context, req *pb.RefreshRequest) (*pb.T
 		return nil, status.Error(codes.Unauthenticated, "refresh token does not exists")
 	}
 
-	if token.ExpiresAt.Unix() < time.Now().Unix() {
+	if token.ExpiresAt.Unix() < utils.Now().Unix() {
 		if err := s.refreshTokenStore.Delete(refreshUUID); err != nil {
 			logrus.Errorf("could not delete old refresh token: %v", err)
 		}

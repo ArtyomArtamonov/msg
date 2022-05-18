@@ -1,4 +1,5 @@
 # Msg
+[![ci](https://github.com/ArtyomArtamonov/msg/actions/workflows/ci.yml/badge.svg)](https://github.com/ArtyomArtamonov/msg/actions/workflows/ci.yml)
 
 Msg is gRPC-based backend for messaging written in golang.
 
