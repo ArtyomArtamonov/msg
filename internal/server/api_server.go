@@ -134,7 +134,7 @@ func (s *ApiServer) SendMessage(ctx context.Context, req *pb.MessageRequest) (*p
 		message := model.NewMessage(senderId, uuid.Nil, req.Message)
 		roomResponse, err := s.roomStore.AddAndSendMessage(room, message)
 		if err != nil {
-			return nil, status.Errorf(codes.Internal, "could not create room or send message: ", err)
+			return nil, status.Errorf(codes.Internal, "could not create room or send message: %v", err)
 		}
 		response := &pb.MessageResponse{
 			RoomId:  roomResponse.PbRoom().Id,
@@ -152,7 +152,7 @@ func (s *ApiServer) SendMessage(ctx context.Context, req *pb.MessageRequest) (*p
 	message := model.NewMessage(senderId, roomId, req.Message)
 	err = s.roomStore.SendMessage(roomId, message)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "could not send message: ", err)
+		return nil, status.Errorf(codes.Internal, "could not send message: %v", err)
 	}
 
 	response := &pb.MessageResponse{
