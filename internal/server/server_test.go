@@ -9,6 +9,7 @@ var jwtManagerMock *mocks.JWTManagerMock
 var refreshTokenStoreMock *mocks.RefreshTokenStoreMock
 var roomStoreMock *mocks.RoomStoreMock
 var userStoreMock *mocks.UserStoreMock
+var amqpProducerMock *mocks.AMQPProducerMock
 var apiServer *ApiServer
 var authServer *AuthServer
 
@@ -18,7 +19,8 @@ func setupTest() {
 	refreshTokenStoreMock = new(mocks.RefreshTokenStoreMock)
 	roomStoreMock = new(mocks.RoomStoreMock)
 	userStoreMock = new(mocks.UserStoreMock)
-	apiServer = NewApiServer(jwtManagerMock, roomStoreMock)
+	amqpProducerMock = new(mocks.AMQPProducerMock)
+	apiServer = NewApiServer(jwtManagerMock, roomStoreMock, amqpProducerMock)
 	authServer = &AuthServer{
 		userStore:         userStoreMock,
 		refreshTokenStore: refreshTokenStoreMock,

@@ -64,10 +64,11 @@ func (s *AuthServer) Register(ctx context.Context, req *pb.RegisterRequest) (*pb
 	}
 
 	response := pb.TokenResponse{
-		AccessToken:  tokenPair.JwtToken,
-		RefreshToken: tokenPair.RefreshToken.Token.String(),
+		Token: &pb.Token{
+			AccessToken:  tokenPair.JwtToken,
+			RefreshToken: tokenPair.RefreshToken.Token.String(),
+		},
 	}
-
 	return &response, nil
 }
 
@@ -91,8 +92,10 @@ func (s *AuthServer) Login(ctx context.Context, req *pb.LoginRequest) (*pb.Token
 	}
 
 	res := pb.TokenResponse{
-		AccessToken:  tokenPair.JwtToken,
-		RefreshToken: tokenPair.RefreshToken.Token.String(),
+		Token: &pb.Token{
+			AccessToken:  tokenPair.JwtToken,
+			RefreshToken: tokenPair.RefreshToken.Token.String(),
+		},
 	}
 
 	return &res, nil
@@ -136,7 +139,9 @@ func (s *AuthServer) Refresh(ctx context.Context, req *pb.RefreshRequest) (*pb.T
 	}
 
 	return &pb.TokenResponse{
-		AccessToken:  tokenPair.JwtToken,
-		RefreshToken: tokenPair.RefreshToken.Token.String(),
+		Token: &pb.Token{
+			AccessToken:  tokenPair.JwtToken,
+			RefreshToken: tokenPair.RefreshToken.Token.String(),
+		},
 	}, nil
 }

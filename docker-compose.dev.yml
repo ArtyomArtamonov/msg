@@ -40,17 +40,19 @@ services:
   
   rabbitmq:
     image: rabbitmq:3-management-alpine
-    container_name: 'rabbitmq'
+    container_name: 'message-broker'
     ports:
       - 5672:5672
       - 15672:15672
     volumes:
       - rmqdata:/var/lib/rabbitmq/
-      - rmqlogs:/var/log/rabbitmq
+      - rmqlogs:/var/log/rabbitmq/
+    restart: always
     networks:
       - backend
     environment:
-    - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
+    - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER}
+    - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS}
 
   database:
     image: postgres

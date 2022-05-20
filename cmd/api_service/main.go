@@ -10,6 +10,7 @@ import (
 	"github.com/ArtyomArtamonov/msg/internal/repository"
 	"github.com/ArtyomArtamonov/msg/internal/server"
 	"github.com/ArtyomArtamonov/msg/internal/service"
+	"github.com/streadway/amqp"
 
 	pb "github.com/ArtyomArtamonov/msg/internal/server/proto"
 
@@ -24,17 +25,13 @@ func main() {
 	logrus.SetLevel(logrus.TraceLevel)
 
 	err := godotenv.Load("../../.env")
-	if err != nil {
-		logrus.Fatal("Error loading .env file: ", err)
-	}
+	failOnError(err, "Error loading .env file")
 
 	env := server.NewEnv()
 
-	host := env.HOST
+	host := env.API_HOST
 	lis, err := net.Listen("tcp", host)
-	if err != nil {
-		logrus.Fatal(err.Error())
-	}
+	failOnError(err, "could not create tcp connection")
 
 	connectionString := fmt.Sprintf(
 		"host=database port=5432 sslmode=disable dbname=%s user=%s password=%s",
@@ -43,15 +40,22 @@ func main() {
 		env.POSTGRES_PASSWORD,
 	)
 	db, err := sql.Open("postgres", connectionString)
-	if err != nil {
-		logrus.Fatal("could not connect to database")
-	}
-	if err := db.Ping(); err != nil {
-		logrus.Fatalf("could not ping database: %v", err)
-	}
+	failOnError(err, "could not connect to database")
+
+	err = db.Ping()
+	failOnError(err, "could not ping database")
 	defer db.Close()
 
-	grpcServer := createAndPrepareGRPCServer(db, env)
+	conn, err := amqp.Dial(fmt.Sprintf("amqp://%s:%s@message-broker:5672/",
+		env.RABBITMQ_DEFAULT_USER,
+		env.PGADMIN_DEFAULT_PASSWORD))
+	failOnError(err, "could not connect to message-broker")
+
+	ch, err := conn.Channel()
+	failOnError(err, "could not create channel (message-broker)")
+	defer ch.Close()
+
+	grpcServer := createAndPrepareGRPCServer(db, ch, env)
 
 	logrus.Info("Starting grpc server on ", host)
 	if err := grpcServer.Serve(lis); err != nil {
@@ -59,7 +63,7 @@ func main() {
 	}
 }
 
-func createAndPrepareGRPCServer(db *sql.DB, env *server.Env) *grpc.Server {
+func createAndPrepareGRPCServer(db *sql.DB, ch *amqp.Channel, env *server.Env) *grpc.Server {
 	endpoints := server.NewEndpoints()
 	endpointRoles := server.NewEndpointRoles(endpoints)
 
@@ -93,24 +97,26 @@ func createAndPrepareGRPCServer(db *sql.DB, env *server.Env) *grpc.Server {
 	authServer := server.NewAuthServer(userStore, refreshTokenStore, jwtManager)
 	authInterceptor := server.NewAuthInterceptor(jwtManager, endpointRoles)
 
-	// MESSAGE
-	sessionStore := repository.NewInMemorySessionStore()
-	messageServer := server.NewMessageServer(jwtManager, sessionStore)
-
 	// API
+	amqpManager := service.NewRabbitMQManager(ch)
 	roomStore := repository.NewPostgresRoomStore(db)
-	apiServer := server.NewApiServer(jwtManager, roomStore)
+	apiServer := server.NewApiServer(jwtManager, roomStore, amqpManager)
 
 	grpcServer := grpc.NewServer(
 		grpc.UnaryInterceptor(authInterceptor.Unary()),
 		grpc.StreamInterceptor(authInterceptor.Stream()),
 	)
 
-	pb.RegisterMessageServiceServer(grpcServer, messageServer)
 	pb.RegisterAuthServiceServer(grpcServer, authServer)
 	pb.RegisterApiServiceServer(grpcServer, apiServer)
 
 	reflection.Register(grpcServer)
 
 	return grpcServer
+}
+
+func failOnError(err error, text string) {
+	if err != nil {
+		logrus.Fatalf("%s: %v", text, err)
+	}
 }

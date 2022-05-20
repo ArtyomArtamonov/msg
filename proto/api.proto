@@ -1,7 +1,7 @@
 syntax = "proto3";
 
-import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
+import "proto/model.proto";
 
 package api;
 
@@ -34,28 +34,12 @@ service ApiService {
 
 message MessageResponse {
     string room_id = 1;
-    Message message = 2;
-}
-
-message Message {
-    string id = 1;
-    string room_id = 2;
-    string user_id = 3;
-    string text = 4;
-    google.protobuf.Timestamp created_at = 5;
+    model.Message message = 2;
 }
 
 message ListRoomsResponse {
     google.protobuf.StringValue next_token = 1;
-    repeated Room rooms = 2;
-}
-
-message Room {
-    string id = 1;
-    string name = 2;
-    google.protobuf.Timestamp created_at = 3;
-    bool dialog_room = 4;
-    google.protobuf.Timestamp last_message_time = 5;
+    repeated model.Room rooms = 2;
 }
 
 message CreateRoomStatus {

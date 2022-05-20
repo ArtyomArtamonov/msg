@@ -3,14 +3,19 @@ syntax = "proto3";
 package message;
 
 import "google/protobuf/empty.proto";
+import "proto/model.proto";
 
 option go_package = "github.com/ArtyomArtamonov/msg/internal/server/proto";
 
-service MessageService {
-    rpc GetMessages(google.protobuf.Empty) returns (stream MessageResponseStream);
+message MessageDelivery {
+    model.Message message = 1;
+    repeated string userIds = 2;
 }
 
-message MessageResponseStream {
-    string message = 1;
-    string from = 2;
+service MessageService {
+    rpc GetMessages(google.protobuf.Empty) returns (stream MessageStreamResponse);
+}
+
+message MessageStreamResponse {
+    model.Message message = 1;
 }

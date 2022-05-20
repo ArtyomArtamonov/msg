@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package model;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/ArtyomArtamonov/msg/internal/server/proto";
+
+message Token {
+    string access_token = 1;
+    string refresh_token = 2;
+}
+
+message Message {
+    string id = 1;
+    string room_id = 2;
+    string user_id = 3;
+    string text = 4;
+    google.protobuf.Timestamp created_at = 5;
+}
+
+message Room {
+    string id = 1;
+    string name = 2;
+    google.protobuf.Timestamp created_at = 3;
+    bool dialog_room = 4;
+    google.protobuf.Timestamp last_message_time = 5;
+}

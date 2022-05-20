@@ -33,7 +33,7 @@ services:
       
   rabbitmq:
     image: rabbitmq:3-management-alpine
-    container_name: 'rabbitmq'
+    container_name: 'message-broker'
     ports:
       - 5672:5672
       - 15672:15672
@@ -42,6 +42,7 @@ services:
       - rmqlogs:/var/log/rabbitmq
     networks:
       - backend
+    restart: always
     environment:
     - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
 

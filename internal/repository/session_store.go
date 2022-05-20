@@ -14,8 +14,8 @@ import (
 
 type SessionStore interface {
 	Add(*model.Session) error
-	Send(uuid.UUID, *pb.MessageResponseM) error
-	Delete(id uuid.UUID) error
+	Send(uuid.UUID, *pb.MessageStreamResponse) error
+	Delete(id uuid.UUID)
 }
 
 type InMemorySessionStore struct {
@@ -39,35 +39,27 @@ func (s *InMemorySessionStore) Add(session *model.Session) error {
 	return nil
 }
 
-func (s *InMemorySessionStore) Send(id uuid.UUID, message *pb.MessageResponseM) error {
+func (s *InMemorySessionStore) Send(id uuid.UUID, messageStream *pb.MessageStreamResponse) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	session, ok := s.sessions[id]
 	if !ok {
-		return status.Errorf(codes.Unavailable, "User %s is not connected to session", id)
+		return status.Errorf(codes.Unavailable, "user %s is not connected to session", id)
 	}
 
 	if time.Duration(utils.Now().Unix()) >= session.Expires {
+		session.Done <- status.Errorf(codes.Unauthenticated, "JWT is expired")
 		return status.Errorf(codes.Unauthenticated, "JWT is expired")
 	}
 
-	err := session.Connection.Send(message)
+	err := session.Connection.Send(messageStream)
 
 	return err
 }
 
-func (s *InMemorySessionStore) Delete(id uuid.UUID) error {
+func (s *InMemorySessionStore) Delete(id uuid.UUID) {
 	s.mutex.Lock()
-
-	session, ok := s.sessions[id]
-	if !ok {
-		return status.Error(codes.NotFound, "User with specified id is not present")
-	}
-
-	s.mutex.Unlock()
+	defer s.mutex.Unlock()
 	delete(s.sessions, id)
-
-	session.Done <- struct{}{}
-	return nil
 }

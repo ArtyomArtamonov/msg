@@ -8,7 +8,8 @@ import (
 )
 
 type Env struct {
-	HOST                       string
+	API_HOST                   string
+	MESSAGE_HOST               string
 	POSTGRES_DB                string
 	POSTGRES_USER              string
 	POSTGRES_PASSWORD          string
@@ -16,6 +17,8 @@ type Env struct {
 	PGADMIN_DEFAULT_PASSWORD   string
 	PGADMIN_CONFIG_SERVER_MODE string
 	JWT_SECRET                 string
+	RABBITMQ_DEFAULT_USER      string
+	RABBITMQ_DEFAULT_PASS      string
 	JWT_DURATION_MIN           int
 	REFRESH_DURATION_DAYS      int
 }
@@ -32,7 +35,8 @@ func NewEnv() *Env {
 	}
 
 	return &Env{
-		HOST:                       os.Getenv("HOST"),
+		API_HOST:                   os.Getenv("API_HOST"),
+		MESSAGE_HOST:               os.Getenv("MESSAGE_HOST"),
 		POSTGRES_DB:                os.Getenv("POSTGRES_DB"),
 		POSTGRES_USER:              os.Getenv("POSTGRES_USER"),
 		POSTGRES_PASSWORD:          os.Getenv("POSTGRES_PASSWORD"),
@@ -40,6 +44,8 @@ func NewEnv() *Env {
 		PGADMIN_DEFAULT_PASSWORD:   os.Getenv("PGADMIN_DEFAULT_PASSWORD"),
 		PGADMIN_CONFIG_SERVER_MODE: os.Getenv("PGADMIN_CONFIG_SERVER_MODE"),
 		JWT_SECRET:                 os.Getenv("JWT_SECRET"),
+		RABBITMQ_DEFAULT_USER:      os.Getenv("RABBITMQ_DEFAULT_USER"),
+		RABBITMQ_DEFAULT_PASS:      os.Getenv("RABBITMQ_DEFAULT_PASS"),
 		JWT_DURATION_MIN:           JWT_DURATION_MIN,
 		REFRESH_DURATION_DAYS:      REFRESH_DURATION_DAYS,
 	}

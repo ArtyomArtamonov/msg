@@ -11,5 +11,5 @@ type Session struct {
 	Id         uuid.UUID
 	Connection pb.MessageService_GetMessagesServer
 	Expires    time.Duration
-	Done       chan<- struct{}
+	Done       chan<- error
 }

@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package auth;
 
+import "proto/model.proto";
+
 option go_package = "github.com/ArtyomArtamonov/msg/internal/server/proto";
 
 message LoginRequest {
@@ -25,6 +27,5 @@ service AuthService {
 }
 
 message TokenResponse {
-    string access_token = 1;
-    string refresh_token = 2;
+    model.Token token = 1;
 }

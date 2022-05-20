@@ -10,6 +10,7 @@ import (
 	pb "github.com/ArtyomArtamonov/msg/internal/server/proto"
 	"github.com/ArtyomArtamonov/msg/internal/service"
 	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -18,14 +19,16 @@ import (
 type ApiServer struct {
 	pb.UnimplementedApiServiceServer
 
-	jwtManager service.JWTManagerProtol
-	roomStore  repository.RoomStore
+	jwtManager  service.JWTManagerProtol
+	roomStore   repository.RoomStore
+	amqpManager service.AMQPProducer
 }
 
-func NewApiServer(jwtManager service.JWTManagerProtol, roomStore repository.RoomStore) *ApiServer {
+func NewApiServer(jwtManager service.JWTManagerProtol, roomStore repository.RoomStore, amqpManager service.AMQPProducer) *ApiServer {
 	return &ApiServer{
-		jwtManager: jwtManager,
-		roomStore:  roomStore,
+		jwtManager:  jwtManager,
+		roomStore:   roomStore,
+		amqpManager: amqpManager,
 	}
 }
 
@@ -136,6 +139,16 @@ func (s *ApiServer) SendMessage(ctx context.Context, req *pb.MessageRequest) (*p
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "could not create room or send message: %v", err)
 		}
+
+		messageDelivery := &pb.MessageDelivery{
+			Message: message.ToPbMessage(),
+			UserIds: []string{recipientId.String()},
+		}
+		err = s.amqpManager.Produce(messageDelivery)
+		if err != nil {
+			logrus.Errorf("could not send message by amqp: %v", err)
+		}
+
 		response := &pb.MessageResponse{
 			RoomId:  roomResponse.PbRoom().Id,
 			Message: message.ToPbMessage(),
@@ -153,6 +166,24 @@ func (s *ApiServer) SendMessage(ctx context.Context, req *pb.MessageRequest) (*p
 	err = s.roomStore.SendMessage(roomId, message)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "could not send message: %v", err)
+	}
+
+	userUUIDs, err := s.roomStore.UsersInRoom(roomId)
+	if err != nil {
+		logrus.Errorf("could not get users in room: %v", err)
+	}
+	var userIds []string
+	for _, userId := range userUUIDs {
+		userIds = append(userIds, userId.String())
+	}
+
+	messageDelivery := &pb.MessageDelivery{
+		Message: message.ToPbMessage(),
+		UserIds: userIds,
+	}
+	err = s.amqpManager.Produce(messageDelivery)
+	if err != nil {
+		logrus.Errorf("could not send message by amqp: %v", err)
 	}
 
 	response := &pb.MessageResponse{

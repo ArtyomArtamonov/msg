@@ -8,6 +8,7 @@ import (
 
 	"github.com/ArtyomArtamonov/msg/internal/model"
 	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -18,7 +19,7 @@ type RoomStore interface {
 	SendMessage(roomId uuid.UUID, message *model.Message) (error)
 	Get(id uuid.UUID) (*model.Room, error)
 	FindDialogRoom(userId1, userId2 uuid.UUID) (*model.Room, error)
-	UsersInRoom(id uuid.UUID) ([]model.User, error)
+	UsersInRoom(id uuid.UUID) ([]uuid.UUID, error)
 	FindByIds(ids ...uuid.UUID) ([]model.User, error)
 	ListRooms(userId uuid.UUID, lastMessageDate time.Time, pageSize int) ([]model.Room, error)
 	ListRoomsFirst(userId uuid.UUID, pageSize int) ([]model.Room, error)
@@ -134,22 +135,28 @@ func (s *PostgresRoomStore) FindDialogRoom(userId1, userId2 uuid.UUID) (*model.R
 	return &room, status.Error(codes.AlreadyExists, "room already exists")
 }
 
-func (s *PostgresRoomStore) UsersInRoom(id uuid.UUID) ([]model.User, error) {
-	rows, err := s.db.Query("SELECT * FROM user_in_room WHERE room_id=$1", id)
+func (s *PostgresRoomStore) UsersInRoom(id uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := s.db.Query("SELECT user_id, room_id FROM user_in_room WHERE room_id=$1", id)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var users []model.User
+	var users []uuid.UUID
 	for rows.Next() {
-		var user model.User
+		var userId string
+		var roomId string
 
-		err = rows.Scan(&user.Id, &user.Username, &user.PasswordHash, &user.Role)
+		err = rows.Scan(&userId, &roomId)
 		if err != nil {
 			return nil, err
 		}
-		users = append(users, user)
+
+		id, err := uuid.Parse(userId)
+		if err != nil {
+			logrus.Errorf("could not parse uuid: %v", err)
+		}
+		users = append(users, id)
 	}
 
 	if err = rows.Err(); err != nil {

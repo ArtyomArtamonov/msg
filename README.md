@@ -38,7 +38,8 @@ Create .env file and put it in a project root
 .env file has to contain
 
 ```env
-HOST="192.168.0.2:1234"
+API_HOST="192.168.0.2:1234"
+MESSAGE_HOST="192.168.0.2:1235"
 
 JWT_SECRET="s3cr3t"
 JWT_DURATION_MIN=15
@@ -53,7 +54,8 @@ PGADMIN_DEFAULT_EMAIL="email"
 PGADMIN_DEFAULT_PASSWORD="password"
 PGADMIN_CONFIG_SERVER_MODE="False"
 
-RABBITMQ_PASSWORD="s0m3passw0rd"
+RABBITMQ_DEFAULT_USER="user"
+RABBITMQ_DEFAULT_PASS="password"
 ```
 
 ## Run

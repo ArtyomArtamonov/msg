@@ -24,7 +24,6 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type MessageServiceClient interface {
 	GetMessages(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (MessageService_GetMessagesClient, error)
-	SendMessage(ctx context.Context, in *MessageRequestM, opts ...grpc.CallOption) (*MessageRequestStatus, error)
 }
 
 type messageServiceClient struct {
@@ -51,7 +50,7 @@ func (c *messageServiceClient) GetMessages(ctx context.Context, in *emptypb.Empt
 }
 
 type MessageService_GetMessagesClient interface {
-	Recv() (*MessageResponseM, error)
+	Recv() (*MessageStreamResponse, error)
 	grpc.ClientStream
 }
 
@@ -59,21 +58,12 @@ type messageServiceGetMessagesClient struct {
 	grpc.ClientStream
 }
 
-func (x *messageServiceGetMessagesClient) Recv() (*MessageResponseM, error) {
-	m := new(MessageResponseM)
+func (x *messageServiceGetMessagesClient) Recv() (*MessageStreamResponse, error) {
+	m := new(MessageStreamResponse)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
 	return m, nil
-}
-
-func (c *messageServiceClient) SendMessage(ctx context.Context, in *MessageRequestM, opts ...grpc.CallOption) (*MessageRequestStatus, error) {
-	out := new(MessageRequestStatus)
-	err := c.cc.Invoke(ctx, "/message.MessageService/SendMessage", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
 }
 
 // MessageServiceServer is the server API for MessageService service.
@@ -81,7 +71,6 @@ func (c *messageServiceClient) SendMessage(ctx context.Context, in *MessageReque
 // for forward compatibility
 type MessageServiceServer interface {
 	GetMessages(*emptypb.Empty, MessageService_GetMessagesServer) error
-	SendMessage(context.Context, *MessageRequestM) (*MessageRequestStatus, error)
 	mustEmbedUnimplementedMessageServiceServer()
 }
 
@@ -91,9 +80,6 @@ type UnimplementedMessageServiceServer struct {
 
 func (UnimplementedMessageServiceServer) GetMessages(*emptypb.Empty, MessageService_GetMessagesServer) error {
 	return status.Errorf(codes.Unimplemented, "method GetMessages not implemented")
-}
-func (UnimplementedMessageServiceServer) SendMessage(context.Context, *MessageRequestM) (*MessageRequestStatus, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SendMessage not implemented")
 }
 func (UnimplementedMessageServiceServer) mustEmbedUnimplementedMessageServiceServer() {}
 
@@ -117,7 +103,7 @@ func _MessageService_GetMessages_Handler(srv interface{}, stream grpc.ServerStre
 }
 
 type MessageService_GetMessagesServer interface {
-	Send(*MessageResponseM) error
+	Send(*MessageStreamResponse) error
 	grpc.ServerStream
 }
 
@@ -125,26 +111,8 @@ type messageServiceGetMessagesServer struct {
 	grpc.ServerStream
 }
 
-func (x *messageServiceGetMessagesServer) Send(m *MessageResponseM) error {
+func (x *messageServiceGetMessagesServer) Send(m *MessageStreamResponse) error {
 	return x.ServerStream.SendMsg(m)
-}
-
-func _MessageService_SendMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(MessageRequestM)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(MessageServiceServer).SendMessage(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/message.MessageService/SendMessage",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MessageServiceServer).SendMessage(ctx, req.(*MessageRequestM))
-	}
-	return interceptor(ctx, in, info, handler)
 }
 
 // MessageService_ServiceDesc is the grpc.ServiceDesc for MessageService service.
@@ -153,12 +121,7 @@ func _MessageService_SendMessage_Handler(srv interface{}, ctx context.Context, d
 var MessageService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "message.MessageService",
 	HandlerType: (*MessageServiceServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "SendMessage",
-			Handler:    _MessageService_SendMessage_Handler,
-		},
-	},
+	Methods:     []grpc.MethodDesc{},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "GetMessages",
