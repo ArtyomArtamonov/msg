@@ -180,8 +180,10 @@ func TestAuthServer_RegisterSuccess(t *testing.T) {
 	assert.Equal(
 		t,
 		&pb.TokenResponse{
-			AccessToken:  expectedTokenPair.JwtToken,
-			RefreshToken: expectedTokenPair.RefreshToken.Token.String(),
+			Token: &pb.Token{
+				AccessToken:  expectedTokenPair.JwtToken,
+				RefreshToken: expectedTokenPair.RefreshToken.Token.String(),
+			},
 		},
 		res,
 	)
@@ -325,8 +327,10 @@ func TestAuthServer_LoginSuccess(t *testing.T) {
 	assert.Equal(
 		t,
 		&pb.TokenResponse{
-			AccessToken:  expectedTokenPair.JwtToken,
-			RefreshToken: expectedTokenPair.RefreshToken.Token.String(),
+			Token: &pb.Token{
+				AccessToken:  expectedTokenPair.JwtToken,
+				RefreshToken: expectedTokenPair.RefreshToken.Token.String(),
+			},
 		},
 		res,
 	)
@@ -534,8 +538,10 @@ func TestAuthServer_RefreshSuccess(t *testing.T) {
 	assert.Equal(
 		t,
 		&pb.TokenResponse{
-			AccessToken:  tokenPair.JwtToken,
-			RefreshToken: tokenPair.RefreshToken.Token.String(),
+			Token: &pb.Token{
+				AccessToken:  tokenPair.JwtToken,
+				RefreshToken: tokenPair.RefreshToken.Token.String(),
+			},
 		},
 		res,
 	)

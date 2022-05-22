@@ -38,9 +38,9 @@ func (m *RoomStoreMock) FindDialogRoom(userId1, userId2 uuid.UUID) (*model.Room,
 	return utils.Unwrap[*model.Room](args.Get(0)), utils.Unwrap[error](args.Get(1))
 }
 
-func (m *RoomStoreMock) UsersInRoom(id uuid.UUID) ([]model.User, error) {
+func (m *RoomStoreMock) UsersInRoom(id uuid.UUID) ([]uuid.UUID, error) {
 	args := m.Called(id)
-	return utils.Unwrap[[]model.User](args.Get(0)), utils.Unwrap[error](args.Get(1))
+	return utils.Unwrap[[]uuid.UUID](args.Get(0)), utils.Unwrap[error](args.Get(1))
 }
 
 func (m *RoomStoreMock) FindByIds(userIds ...uuid.UUID) ([]model.User, error) {

@@ -79,12 +79,15 @@ func TestAuthInterceptor_UnarySussessForAnyone(t *testing.T) {
 	setupTest()
 
 	expectedRequest := &pb.MessageStreamResponse{
-		To:      "some_user",
-		Message: "some message",
+		Message: &pb.Message{
+			Text: "some message",
+		},
 	}
-	expectedResponse := &pb.MessageRequestStatus{
-		Success: true,
-		Message: "some message",
+	expectedResponse := &pb.MessageDelivery{
+		Message: &pb.Message{
+			Text: "some message",
+		},
+		UserIds: []string{},
 	}
 	expectedError := errors.New("some_error")
 
@@ -119,13 +122,14 @@ func TestAuthInterceptor_UnarySussessWithPermissions(t *testing.T) {
 
 	expectedRequest := &pb.MessageStreamResponse{
 		Message: &pb.Message{
-			UserId: "some_user",
-			Text:   "some message",
+			Text: "some message",
 		},
 	}
-	expectedResponse := &pb.MessageRequestStatus{
-		Success: true,
-		Message: "some message",
+	expectedResponse := &pb.MessageDelivery{
+		Message: &pb.Message{
+			Text: "some message",
+		},
+		UserIds: []string{},
 	}
 	expectedError := errors.New("some_error")
 
