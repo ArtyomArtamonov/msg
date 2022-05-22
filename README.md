@@ -21,14 +21,14 @@ Already achieved:
 Run
 
 ```
-make proto-c
+$ make proto-c
 ```
 
 For that to work you need to install
 
 ```
-go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.28
-go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.2
+$ go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.28
+$ go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.2
 ```
 
 ## Env variables
@@ -38,8 +38,8 @@ Create .env file and put it in a project root
 .env file has to contain
 
 ```env
-API_HOST="192.168.0.2:1234"
-MESSAGE_HOST="192.168.0.2:1235"
+API_HOST=":50051"
+MESSAGE_HOST=":50052"
 
 JWT_SECRET="s3cr3t"
 JWT_DURATION_MIN=15
@@ -50,7 +50,7 @@ POSTGRES_DB="dbname"
 POSTGRES_USER="dbuser"
 POSTGRES_PASSWORD="dbuserpassword"
 
-PGADMIN_DEFAULT_EMAIL="email"
+PGADMIN_DEFAULT_EMAIL="example@example.com"
 PGADMIN_DEFAULT_PASSWORD="password"
 PGADMIN_CONFIG_SERVER_MODE="False"
 
