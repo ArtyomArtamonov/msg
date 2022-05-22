@@ -1,7 +1,6 @@
 package main
 
 import (
-	"database/sql"
 	"fmt"
 	"net"
 	"time"
@@ -10,6 +9,7 @@ import (
 	"github.com/ArtyomArtamonov/msg/internal/repository"
 	"github.com/ArtyomArtamonov/msg/internal/server"
 	"github.com/ArtyomArtamonov/msg/internal/service"
+	"github.com/jmoiron/sqlx"
 	"github.com/streadway/amqp"
 
 	pb "github.com/ArtyomArtamonov/msg/internal/server/proto"
@@ -39,8 +39,7 @@ func main() {
 		env.POSTGRES_USER,
 		env.POSTGRES_PASSWORD,
 	)
-	db, err := sql.Open("postgres", connectionString)
-	failOnError(err, "could not connect to database")
+	db := sqlx.MustOpen("postgres", connectionString)
 
 	err = db.Ping()
 	failOnError(err, "could not ping database")
@@ -63,7 +62,7 @@ func main() {
 	}
 }
 
-func createAndPrepareGRPCServer(db *sql.DB, ch *amqp.Channel, env *server.Env) *grpc.Server {
+func createAndPrepareGRPCServer(db *sqlx.DB, ch *amqp.Channel, env *server.Env) *grpc.Server {
 	endpoints := server.NewEndpoints()
 	endpointRoles := server.NewEndpointRoles(endpoints)
 

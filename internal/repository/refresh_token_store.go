@@ -1,10 +1,9 @@
 package repository
 
 import (
-	"database/sql"
-
 	"github.com/ArtyomArtamonov/msg/internal/model"
 	"github.com/google/uuid"
+	"github.com/jmoiron/sqlx"
 )
 
 type RefreshTokenStore interface {
@@ -14,10 +13,10 @@ type RefreshTokenStore interface {
 }
 
 type RefreshTokenPostgresStore struct {
-	db *sql.DB
+	db *sqlx.DB
 }
 
-func NewRefreshTokenPostgresStore(db *sql.DB) *RefreshTokenPostgresStore {
+func NewRefreshTokenPostgresStore(db *sqlx.DB) *RefreshTokenPostgresStore {
 	return &RefreshTokenPostgresStore{
 		db: db,
 	}
@@ -45,14 +44,10 @@ func (s *RefreshTokenPostgresStore) Delete(token uuid.UUID) error {
 }
 
 func (s *RefreshTokenPostgresStore) Get(token uuid.UUID) (*model.RefreshToken, error) {
-	row := s.db.QueryRow("SELECT * FROM refresh_tokens WHERE token=$1", token)
-
-	if err := row.Err(); err != nil {
-		return nil, err
-	}
-
 	refreshToken := new(model.RefreshToken)
-	if err := row.Scan(&refreshToken.Token, &refreshToken.UserId, &refreshToken.ExpiresAt, &refreshToken.IssuedAt); err != nil {
+	err := s.db.Get(refreshToken, "SELECT * FROM refresh_tokens WHERE token=$1", token)
+
+	if err != nil {
 		return nil, err
 	}
 

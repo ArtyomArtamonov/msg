@@ -23,8 +23,8 @@ func (m *RoomStoreMock) AddAndSendMessage(room *model.Room, message *model.Messa
 	return utils.Unwrap[*model.Room](args.Get(0)), utils.Unwrap[error](args.Get(1))
 }
 
-func (m *RoomStoreMock) SendMessage(roomId uuid.UUID, message *model.Message) (error) {
-	args := m.Called(roomId, message)
+func (m *RoomStoreMock) SendMessage(message *model.Message) (error) {
+	args := m.Called(message)
 	return utils.Unwrap[error](args.Get(0))
 }
 

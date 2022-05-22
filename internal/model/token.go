@@ -13,10 +13,10 @@ type TokenPair struct {
 }
 
 type RefreshToken struct {
-	Token     uuid.UUID
-	UserId    uuid.UUID
-	ExpiresAt time.Time
-	IssuedAt  time.Time
+	Token     uuid.UUID `db:"token"`
+	UserId    uuid.UUID `db:"user_id"`
+	ExpiresAt time.Time `db:"expires_at"`
+	IssuedAt  time.Time `db:"issued_at"`
 }
 
 type UserClaims struct {

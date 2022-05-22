@@ -11,10 +11,10 @@ const (
 )
 
 type User struct {
-	Id           uuid.UUID
-	Username     string
-	PasswordHash string
-	Role         string
+	Id           uuid.UUID `db:"id"`
+	Username     string    `db:"username"`
+	PasswordHash string    `db:"password_hash"`
+	Role         string    `db:"role"`
 }
 
 func NewUser(username, password, role string) (*User, error) {

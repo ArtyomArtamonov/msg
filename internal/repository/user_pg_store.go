@@ -1,10 +1,9 @@
 package repository
 
 import (
-	"database/sql"
-
 	"github.com/ArtyomArtamonov/msg/internal/model"
 	"github.com/google/uuid"
+	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 )
 
@@ -15,10 +14,10 @@ type UserStore interface {
 }
 
 type PostgresUserStore struct {
-	db *sql.DB
+	db *sqlx.DB
 }
 
-func NewPostgresUserStore(db *sql.DB) *PostgresUserStore {
+func NewPostgresUserStore(db *sqlx.DB) *PostgresUserStore {
 	return &PostgresUserStore{
 		db: db,
 	}
@@ -31,15 +30,15 @@ func (s *PostgresUserStore) Save(user *model.User) error {
 	if err != nil {
 		return err
 	}
-	
+
 	return nil
 }
 
 func (s *PostgresUserStore) Find(id uuid.UUID) (*model.User, error) {
-	row := s.db.QueryRow("SELECT id, username, password_hash, role FROM users WHERE id=$1", id)
-
 	user := new(model.User)
-	if err := row.Scan(&user.Id, &user.Username, &user.PasswordHash, &user.Role); err != nil {
+	err := s.db.Get(user, "SELECT id, username, password_hash, role FROM users WHERE id=$1", id)
+
+	if err != nil {
 		return nil, err
 	}
 
@@ -47,10 +46,10 @@ func (s *PostgresUserStore) Find(id uuid.UUID) (*model.User, error) {
 }
 
 func (s *PostgresUserStore) FindByUsername(username string) (*model.User, error) {
-	row := s.db.QueryRow("SELECT id, username, password_hash, role FROM users WHERE username=$1", username)
-
 	user := new(model.User)
-	if err := row.Scan(&user.Id, &user.Username, &user.PasswordHash, &user.Role); err != nil {
+	err := s.db.Get(user, "SELECT id, username, password_hash, role FROM users WHERE username=$1", username)
+
+	if err != nil {
 		return nil, err
 	}
 

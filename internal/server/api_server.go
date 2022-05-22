@@ -33,20 +33,41 @@ func NewApiServer(jwtManager service.JWTManagerProtol, roomStore repository.Room
 }
 
 func (s *ApiServer) CreateRoom(ctx context.Context, req *pb.CreateRoomRequest) (*pb.CreateRoomStatus, error) {
-	if len(req.UserIds) < 2 {
-		return nil, status.Error(codes.InvalidArgument, "cannot be less than 2 users")
+	claims, err := s.jwtManager.GetAndVerifyClaims(ctx)
+	if err != nil {
+		return nil, err
 	}
 
-	newRoom := model.NewRoom(req.Name, false)
-	err := s.roomStore.Add(newRoom)
+	usersInRoom := map[string]bool{}
+	usersInRoom[claims.Id] = true
+	for _, userId  := range req.UserIds {
+		usersInRoom[userId] = true
+	}
+
+	usersInRoomUUIDs := []uuid.UUID{}
+	for userId := range usersInRoom {
+		id, err := uuid.Parse(userId)
+		if err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "could not parse uuid: %v", err)
+		}
+		usersInRoomUUIDs = append(usersInRoomUUIDs, id)
+	}
+
+	newRoom := model.NewRoom(req.Name, false, usersInRoomUUIDs...)
+	err = s.roomStore.Add(newRoom)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "cannot create room: %v", err)
+	}
+
+	userIdsResponse := []string{}
+	for _, id := range usersInRoomUUIDs {
+		userIdsResponse = append(userIdsResponse, id.String())
 	}
 
 	createRoomStatus := &pb.CreateRoomStatus{
 		RoomId: newRoom.Id.String(),
 		Name:   newRoom.Name,
-		Users:  req.UserIds,
+		Users:  userIdsResponse,
 	}
 
 	return createRoomStatus, nil
@@ -136,8 +157,13 @@ func (s *ApiServer) SendMessage(ctx context.Context, req *pb.MessageRequest) (*p
 		room := model.NewRoom("", true, senderId, recipientId)
 		message := model.NewMessage(senderId, uuid.Nil, req.Message)
 		roomResponse, err := s.roomStore.AddAndSendMessage(room, message)
-		if err != nil {
-			return nil, status.Errorf(codes.Internal, "could not create room or send message: %v", err)
+		if err != nil && status.Code(err) == codes.AlreadyExists {
+			message.RoomId = roomResponse.Id
+
+			err := s.roomStore.SendMessage(message)
+			if err != nil {
+				return nil, status.Errorf(codes.Internal, "could not create room or send message: %v", err)
+			}
 		}
 
 		messageDelivery := &pb.MessageDelivery{
@@ -163,7 +189,7 @@ func (s *ApiServer) SendMessage(ctx context.Context, req *pb.MessageRequest) (*p
 	}
 
 	message := model.NewMessage(senderId, roomId, req.Message)
-	err = s.roomStore.SendMessage(roomId, message)
+	err = s.roomStore.SendMessage(message)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "could not send message: %v", err)
 	}

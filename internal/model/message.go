@@ -9,11 +9,11 @@ import (
 )
 
 type Message struct {
-	Id        uuid.UUID
-	UserId    uuid.UUID
-	RoomId    uuid.UUID
-	Text      string
-	CreatedAt time.Time
+	Id        uuid.UUID `db:"id"`
+	UserId    uuid.UUID `db:"user_id"`
+	RoomId    uuid.UUID `db:"room_id"`
+	Text      string    `db:"text"`
+	CreatedAt time.Time `db:"created_at"`
 }
 
 func NewMessage(userId, roomId uuid.UUID, text string) *Message {

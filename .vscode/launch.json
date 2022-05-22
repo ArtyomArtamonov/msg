@@ -10,7 +10,7 @@
             "request": "attach",
             "mode": "remote",
             "remotePath": "/app/cmd/api_service/",
-            "cwd": "${workspaceRoot}/cmd",
+            "cwd": "${workspaceRoot}/cmd/api_service/",
             "port": 2345,
             "host": "127.0.0.1"
         },

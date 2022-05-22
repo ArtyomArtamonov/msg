@@ -11,12 +11,12 @@ import (
 )
 
 type Room struct {
-	Id              uuid.UUID
-	Name            string
-	CreatedAt       time.Time
-	UserIds         []uuid.UUID
-	DialogRoom      bool
-	LastMessageTime time.Time
+	Id              uuid.UUID   `db:"id"`
+	Name            string      `db:"name"`
+	CreatedAt       time.Time   `db:"created_at"`
+	UserIds         []uuid.UUID `db:"-"`
+	DialogRoom      bool        `db:"dialog_room"`
+	LastMessageTime time.Time   `db:"last_message_time"`
 }
 
 func NewRoom(name string, dialogRoom bool, users ...uuid.UUID) *Room {

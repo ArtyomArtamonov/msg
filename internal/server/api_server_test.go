@@ -17,51 +17,42 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-func TestApiServer_CreateRoomFailsIfDatabaseQueryFails(t *testing.T) {
-	setupTest()
-
-	expectedError := errors.New("some_error")
-
-	roomStoreMock.On("Add", mock.Anything).Return(expectedError)
-
-	res, err := apiServer.CreateRoom(
-		context.TODO(),
-		&proto.CreateRoomRequest{
-			Name:         "",
-			UserIds: []string{
-				"some_user_id_1",
-				"some_user_id_2",
-			},
-		},
-	)
-
-	assert.Nil(t, res)
-	assert.ErrorIs(t, status.Errorf(codes.Internal, "cannot create room: %v", expectedError), err)
-}
-
 func TestApiServer_CreateRoomSuccess(t *testing.T) {
 	setupTest()
 
-	expectedName := "some_user"
-	expectedUsers := []string{
-		"some_user_id_1",
-		"some_user_id_2",
+	createRoomRequest := &proto.CreateRoomRequest{
+		Name: "room_name",
+		UserIds: []string{
+			"f13550bb-ea7d-4c5b-b9a4-a352c13f1232",
+		},
+	}
+	
+	expectedClaimsResult := &model.UserClaims{
+		StandardClaims: jwt.StandardClaims{
+			Id: "7815f165-6e48-452d-8fe9-b4075b35e194",
+		},
+	}
+	expectedResponse := proto.CreateRoomStatus{
+		Name:   "room_name",
+		Users:  []string{
+			"7815f165-6e48-452d-8fe9-b4075b35e194",
+			"f13550bb-ea7d-4c5b-b9a4-a352c13f1232",
+		},
 	}
 
+	jwtManagerMock.On("GetAndVerifyClaims", mock.Anything).Return(expectedClaimsResult, nil)
 	roomStoreMock.On("Add", mock.Anything).Return(nil)
 
 	res, err := apiServer.CreateRoom(
 		context.TODO(),
-		&proto.CreateRoomRequest{
-			Name:         expectedName,
-			UserIds:        expectedUsers,
-		},
+		createRoomRequest,
 	)
 
-	assert.NotEmpty(t, res.RoomId)
-	assert.Equal(t, res.Name, expectedName)
-	assert.Equal(t, res.Users, expectedUsers)
 	assert.Nil(t, err)
+	assert.Equal(t, expectedResponse.Name, res.Name)
+	assert.Equal(t, expectedResponse.Name, res.Name)
+	assert.Contains(t, res.Users, createRoomRequest.UserIds[0])
+	assert.Contains(t, res.Users, expectedClaimsResult.Id)
 }
 
 func TestApiServer_ListRoomsFailsIfPageSizeExceedsLimit(t *testing.T) {
