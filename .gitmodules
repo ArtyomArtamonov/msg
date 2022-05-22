@@ -1,0 +1,3 @@
+[submodule "msg-proto"]
+	path = msg-proto
+	url = git@github.com:ArtyomArtamonov/msg-proto.git
