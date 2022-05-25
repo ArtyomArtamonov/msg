@@ -31,7 +31,7 @@ func main() {
 
 	conn, err := amqp.Dial(fmt.Sprintf("amqp://%s:%s@message-broker:5672/",
 		env.RABBITMQ_DEFAULT_USER,
-		env.PGADMIN_DEFAULT_PASSWORD))
+		env.RABBITMQ_DEFAULT_PASS))
 	failOnError(err, "could not connect to message-broker")
 
 	ch, err := conn.Channel()
