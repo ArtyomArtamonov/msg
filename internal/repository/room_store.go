@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/ArtyomArtamonov/msg/internal/model"
-	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/sirupsen/logrus"
@@ -14,6 +13,7 @@ import (
 )
 
 type RoomStore interface {
+	AddAndSendMessage(room *model.Room, message *model.Message) (*model.Room, error)
 	Add(room *model.Room) error
 	Get(id uuid.UUID) (*model.Room, error)
 	FindDialogRoom(userId1, userId2 uuid.UUID) (*model.Room, error)
@@ -21,11 +21,6 @@ type RoomStore interface {
 	FindByIds(ids ...uuid.UUID) ([]model.User, error)
 	ListRooms(userId uuid.UUID, lastMessageDate time.Time, pageSize int) ([]model.Room, error)
 	ListRoomsFirst(userId uuid.UUID, pageSize int) ([]model.Room, error)
-
-	AddAndSendMessage(room *model.Room, message *model.Message) (*model.Room, error)
-	SendMessage(message *model.Message) error
-	ListMessages(id uuid.UUID, createdAt time.Time, pageSize int) ([]model.Message, error)
-	ListMessagesFirst(id uuid.UUID, pageSize int) ([]model.Message, error)
 }
 
 type PostgresRoomStore struct {
@@ -36,31 +31,6 @@ func NewPostgresRoomStore(db *sqlx.DB) *PostgresRoomStore {
 	return &PostgresRoomStore{
 		db: db,
 	}
-}
-
-func (s *PostgresRoomStore) Add(room *model.Room) error {
-	tx, err := s.db.Beginx()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
-	err = tx.Get(&room.Id, "INSERT INTO rooms(id, name, created_at, dialog_room, last_message_time) VALUES($1, $2, $3, $4, $5) RETURNING id",
-		room.Id, room.Name, room.CreatedAt, room.DialogRoom, room.LastMessageTime)
-	if err != nil {
-		return err
-	}
-
-	for _, userId := range room.UserIds {
-		var room_id uuid.UUID
-		err = tx.Get(&room_id, "INSERT INTO user_in_room(room_id, user_id) VALUES($1, $2) RETURNING room_id",
-			room.Id, userId)
-		if err != nil {
-			return err
-		}
-	}
-
-	return tx.Commit()
 }
 
 func (s *PostgresRoomStore) AddAndSendMessage(room *model.Room, message *model.Message) (*model.Room, error) {
@@ -103,60 +73,29 @@ func (s *PostgresRoomStore) AddAndSendMessage(room *model.Room, message *model.M
 	return room, tx.Commit()
 }
 
-func (s *PostgresRoomStore) SendMessage(message *model.Message) error {
-	var messageId uuid.UUID
-	err := s.db.Get(&messageId, "INSERT INTO messages(id, room_id, user_id, text, created_at) VALUES($1, $2, $3, $4, $5) RETURNING id",
-		message.Id, message.RoomId, message.UserId, message.Text, message.CreatedAt)
-	message.Id = messageId
-
-	return err
-}
-
-func (s *PostgresRoomStore) ListMessages(id uuid.UUID, createdAt time.Time, pageSize int) ([]model.Message, error) {
-	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
-	sql, _, err := psql.
-		Select("id, room_id, user_id, text, created_at").
-		From("messages").
-		Where(sq.And{
-			sq.Eq{"user_id": id},
-			sq.Lt{"created_at": createdAt},
-		}).
-		OrderBy("created_at DESC").
-		Limit(uint64(pageSize)).
-		ToSql()
+func (s *PostgresRoomStore) Add(room *model.Room) error {
+	tx, err := s.db.Beginx()
 	if err != nil {
-		return nil, err
+		return err
+	}
+	defer tx.Rollback()
+
+	err = tx.Get(&room.Id, "INSERT INTO rooms(id, name, created_at, dialog_room, last_message_time) VALUES($1, $2, $3, $4, $5) RETURNING id",
+		room.Id, room.Name, room.CreatedAt, room.DialogRoom, room.LastMessageTime)
+	if err != nil {
+		return err
 	}
 
-	messages := []model.Message{}
-	err = s.db.Select(&messages, sql, id, createdAt)
-	if err != nil {
-		return nil, err
+	for _, userId := range room.UserIds {
+		var room_id uuid.UUID
+		err = tx.Get(&room_id, "INSERT INTO user_in_room(room_id, user_id) VALUES($1, $2) RETURNING room_id",
+			room.Id, userId)
+		if err != nil {
+			return err
+		}
 	}
 
-	return messages, err
-}
-
-func (s *PostgresRoomStore) ListMessagesFirst(id uuid.UUID, pageSize int) ([]model.Message, error) {
-	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
-	sql, _, err := psql.
-		Select("id, room_id, user_id, text, created_at").
-		From("messages").
-		Where(sq.Eq{"user_id": id}).
-		OrderBy("created_at DESC").
-		Limit(uint64(pageSize)).
-		ToSql()
-	if err != nil {
-		return nil, err
-	}
-
-	messages := []model.Message{}
-	err = s.db.Select(&messages, sql, id)
-	if err != nil {
-		return nil, err
-	}
-
-	return messages, err
+	return tx.Commit()
 }
 
 func (s *PostgresRoomStore) Get(id uuid.UUID) (*model.Room, error) {

@@ -19,16 +19,18 @@ import (
 type ApiServer struct {
 	pb.UnimplementedApiServiceServer
 
-	jwtManager  service.JWTManagerProtol
-	roomStore   repository.RoomStore
-	amqpManager service.AMQPProducer
+	jwtManager   service.JWTManagerProtol
+	roomStore    repository.RoomStore
+	messageStore repository.MessageStore
+	amqpManager  service.AMQPProducer
 }
 
-func NewApiServer(jwtManager service.JWTManagerProtol, roomStore repository.RoomStore, amqpManager service.AMQPProducer) *ApiServer {
+func NewApiServer(jwtManager service.JWTManagerProtol, roomStore repository.RoomStore, messageStore repository.MessageStore, amqpManager service.AMQPProducer) *ApiServer {
 	return &ApiServer{
-		jwtManager:  jwtManager,
-		roomStore:   roomStore,
-		amqpManager: amqpManager,
+		jwtManager:   jwtManager,
+		roomStore:    roomStore,
+		messageStore: messageStore,
+		amqpManager:  amqpManager,
 	}
 }
 
@@ -152,7 +154,7 @@ func (s *ApiServer) ListMessages(ctx context.Context, req *pb.ListMessagesReques
 
 	var messages []model.Message
 	if req.NextToken == nil {
-		messages, err = s.roomStore.ListMessagesFirst(id, int(req.PageSize))
+		messages, err = s.messageStore.ListMessagesFirst(id, int(req.PageSize))
 		if err != nil {
 			return nil, err
 		}
@@ -161,7 +163,7 @@ func (s *ApiServer) ListMessages(ctx context.Context, req *pb.ListMessagesReques
 		if e != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "cannot parse next token: %v", e)
 		}
-		messages, err = s.roomStore.ListMessages(id, *lastMessageTime, int(req.PageSize))
+		messages, err = s.messageStore.ListMessages(id, *lastMessageTime, int(req.PageSize))
 	}
 
 	var nextToken string
@@ -221,7 +223,7 @@ func (s *ApiServer) SendMessage(ctx context.Context, req *pb.MessageRequest) (*p
 		if err != nil && status.Code(err) == codes.AlreadyExists {
 			message.RoomId = roomResponse.Id
 
-			err := s.roomStore.SendMessage(message)
+			err := s.messageStore.SendMessage(message)
 			if err != nil {
 				return nil, status.Errorf(codes.Internal, "could not create room or send message: %v", err)
 			}
@@ -250,7 +252,7 @@ func (s *ApiServer) SendMessage(ctx context.Context, req *pb.MessageRequest) (*p
 	}
 
 	message := model.NewMessage(senderId, roomId, req.Message)
-	err = s.roomStore.SendMessage(message)
+	err = s.messageStore.SendMessage(message)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "could not send message: %v", err)
 	}

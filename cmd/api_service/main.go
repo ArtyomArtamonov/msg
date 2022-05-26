@@ -99,7 +99,8 @@ func createAndPrepareGRPCServer(db *sqlx.DB, ch *amqp.Channel, env *server.Env) 
 	// API
 	amqpManager := service.NewRabbitMQManager(ch)
 	roomStore := repository.NewPostgresRoomStore(db)
-	apiServer := server.NewApiServer(jwtManager, roomStore, amqpManager)
+	messageStore := repository.NewPostgresMessageStore(db)
+	apiServer := server.NewApiServer(jwtManager, roomStore, messageStore, amqpManager)
 
 	grpcServer := grpc.NewServer(
 		grpc.UnaryInterceptor(authInterceptor.Unary()),
