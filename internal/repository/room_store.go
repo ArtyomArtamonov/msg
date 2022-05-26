@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/ArtyomArtamonov/msg/internal/model"
+	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/sirupsen/logrus"
@@ -14,14 +15,17 @@ import (
 
 type RoomStore interface {
 	Add(room *model.Room) error
-	AddAndSendMessage(room *model.Room, message *model.Message) (*model.Room, error)
-	SendMessage(message *model.Message) error
 	Get(id uuid.UUID) (*model.Room, error)
 	FindDialogRoom(userId1, userId2 uuid.UUID) (*model.Room, error)
 	UsersInRoom(id uuid.UUID) ([]uuid.UUID, error)
 	FindByIds(ids ...uuid.UUID) ([]model.User, error)
 	ListRooms(userId uuid.UUID, lastMessageDate time.Time, pageSize int) ([]model.Room, error)
 	ListRoomsFirst(userId uuid.UUID, pageSize int) ([]model.Room, error)
+
+	AddAndSendMessage(room *model.Room, message *model.Message) (*model.Room, error)
+	SendMessage(message *model.Message) error
+	ListMessages(id uuid.UUID, createdAt time.Time, pageSize int) ([]model.Message, error)
+	ListMessagesFirst(id uuid.UUID, pageSize int) ([]model.Message, error)
 }
 
 type PostgresRoomStore struct {
@@ -108,6 +112,53 @@ func (s *PostgresRoomStore) SendMessage(message *model.Message) error {
 	return err
 }
 
+func (s *PostgresRoomStore) ListMessages(id uuid.UUID, createdAt time.Time, pageSize int) ([]model.Message, error) {
+	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
+	sql, _, err := psql.
+		Select("id, room_id, user_id, text, created_at").
+		From("messages").
+		Where(sq.And{
+			sq.Eq{"user_id": id},
+			sq.Lt{"created_at": createdAt},
+		}).
+		OrderBy("created_at DESC").
+		Limit(uint64(pageSize)).
+		ToSql()
+	if err != nil {
+		return nil, err
+	}
+
+	messages := []model.Message{}
+	err = s.db.Select(&messages, sql, id, createdAt)
+	if err != nil {
+		return nil, err
+	}
+
+	return messages, err
+}
+
+func (s *PostgresRoomStore) ListMessagesFirst(id uuid.UUID, pageSize int) ([]model.Message, error) {
+	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
+	sql, _, err := psql.
+		Select("id, room_id, user_id, text, created_at").
+		From("messages").
+		Where(sq.Eq{"user_id": id}).
+		OrderBy("created_at DESC").
+		Limit(uint64(pageSize)).
+		ToSql()
+	if err != nil {
+		return nil, err
+	}
+
+	messages := []model.Message{}
+	err = s.db.Select(&messages, sql, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return messages, err
+}
+
 func (s *PostgresRoomStore) Get(id uuid.UUID) (*model.Room, error) {
 	room := new(model.Room)
 	err := s.db.Get(room, "SELECT id, name, created_at, dialog_room, last_message_time FROM rooms WHERE id=$1",
@@ -159,7 +210,6 @@ func (s *PostgresRoomStore) FindByIds(ids ...uuid.UUID) ([]model.User, error) {
 	}
 	q = q[:len(q)-3] // remove last OR
 
-
 	users := []model.User{}
 	err := s.db.Select(&users, q)
 	if err != nil {
@@ -175,9 +225,9 @@ func (s *PostgresRoomStore) FindByIds(ids ...uuid.UUID) ([]model.User, error) {
 
 func (s *PostgresRoomStore) ListRooms(userId uuid.UUID, lastMessageDate time.Time, pageSize int) ([]model.Room, error) {
 	res := []model.Room{}
-	// This SQL Query has a workaround in it: first and second returned rows are actually the same. 
-	// But removing first row somehow ruins everything. 
-	// We are using unsafe here only to silently not map first row 
+	// This SQL Query has a workaround in it: first and second returned rows are actually the same.
+	// But removing first row somehow ruins everything.
+	// We are using unsafe here only to silently not map first row
 	udb := s.db.Unsafe()
 	err := udb.Select(
 		&res,
@@ -198,9 +248,9 @@ func (s *PostgresRoomStore) ListRooms(userId uuid.UUID, lastMessageDate time.Tim
 
 func (s *PostgresRoomStore) ListRoomsFirst(userId uuid.UUID, pageSize int) ([]model.Room, error) {
 	res := []model.Room{}
-	// This SQL Query has a workaround in it: first and second returned rows are actually the same. 
-	// But removing first row somehow ruins everything. 
-	// We are using unsafe here only to silently not map first row 
+	// This SQL Query has a workaround in it: first and second returned rows are actually the same.
+	// But removing first row somehow ruins everything.
+	// We are using unsafe here only to silently not map first row
 	udb := s.db.Unsafe()
 	err := udb.Select(
 		&res,

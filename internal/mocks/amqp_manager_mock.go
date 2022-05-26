@@ -1,7 +1,7 @@
 package mocks
 
 import (
-	"github.com/ArtyomArtamonov/msg/internal/server/proto"
+	proto "github.com/ArtyomArtamonov/msg/internal/server/msg-proto"
 	"github.com/ArtyomArtamonov/msg/internal/utils"
 	"github.com/stretchr/testify/mock"
 )

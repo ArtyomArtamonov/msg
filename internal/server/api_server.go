@@ -7,7 +7,7 @@ import (
 
 	"github.com/ArtyomArtamonov/msg/internal/model"
 	"github.com/ArtyomArtamonov/msg/internal/repository"
-	pb "github.com/ArtyomArtamonov/msg/internal/server/proto"
+	pb "github.com/ArtyomArtamonov/msg/internal/server/msg-proto"
 	"github.com/ArtyomArtamonov/msg/internal/service"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
@@ -40,7 +40,7 @@ func (s *ApiServer) CreateRoom(ctx context.Context, req *pb.CreateRoomRequest) (
 
 	usersInRoom := map[string]bool{}
 	usersInRoom[claims.Id] = true
-	for _, userId  := range req.UserIds {
+	for _, userId := range req.UserIds {
 		usersInRoom[userId] = true
 	}
 
@@ -89,10 +89,13 @@ func (s *ApiServer) ListRooms(ctx context.Context, req *pb.ListRoomsRequest) (*p
 	}
 
 	var rooms []model.Room
-	if req.PageToken == nil {
+	if req.NextToken == nil {
 		rooms, err = s.roomStore.ListRoomsFirst(userId, int(req.PageSize))
+		if err != nil {
+			return nil, err
+		}
 	} else {
-		lastMessageTime, e := decodePageToken(req.PageToken.Value)
+		lastMessageTime, e := decodePageToken(req.NextToken.Value)
 		if e != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "cannot parse next token: %v", e)
 		}
@@ -130,6 +133,64 @@ func (s *ApiServer) ListRooms(ctx context.Context, req *pb.ListRoomsRequest) (*p
 	}
 
 	return listRoomsResponse, nil
+}
+
+func (s *ApiServer) ListMessages(ctx context.Context, req *pb.ListMessagesRequest) (*pb.ListMessagesResponse, error) {
+	if req.PageSize > 100 {
+		return nil, status.Error(codes.InvalidArgument, "page_size cannot be bigger than 100")
+	}
+
+	claims, err := s.jwtManager.GetAndVerifyClaims(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	id, err := uuid.Parse(claims.Id)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "could not parse uuid")
+	}
+
+	var messages []model.Message
+	if req.NextToken == nil {
+		messages, err = s.roomStore.ListMessagesFirst(id, int(req.PageSize))
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		lastMessageTime, e := decodePageToken(req.NextToken.Value)
+		if e != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "cannot parse next token: %v", e)
+		}
+		messages, err = s.roomStore.ListMessages(id, *lastMessageTime, int(req.PageSize))
+	}
+
+	var nextToken string
+	if len(messages) < int(req.PageSize) {
+		nextToken = ""
+	} else {
+		lastMessage := messages[len(messages)-1]
+		nextToken = encodePageToken(lastMessage.CreatedAt)
+	}
+
+	pbMessages := []*pb.Message{}
+	for _, message := range messages {
+		pbMessages = append(pbMessages, message.ToPbMessage())
+	}
+
+	var listMessagesResponse *pb.ListMessagesResponse
+	if len(nextToken) == 0 {
+		listMessagesResponse = &pb.ListMessagesResponse{
+			NextToken: nil,
+			Messages:  pbMessages,
+		}
+	} else {
+		listMessagesResponse = &pb.ListMessagesResponse{
+			NextToken: &wrapperspb.StringValue{Value: nextToken},
+			Messages:  pbMessages,
+		}
+	}
+
+	return listMessagesResponse, nil
 }
 
 func (s *ApiServer) SendMessage(ctx context.Context, req *pb.MessageRequest) (*pb.MessageResponse, error) {

@@ -6,7 +6,7 @@ import (
 
 	"github.com/ArtyomArtamonov/msg/internal/model"
 	"github.com/ArtyomArtamonov/msg/internal/repository"
-	pb "github.com/ArtyomArtamonov/msg/internal/server/proto"
+	pb "github.com/ArtyomArtamonov/msg/internal/server/msg-proto"
 	"github.com/ArtyomArtamonov/msg/internal/service"
 	"github.com/ArtyomArtamonov/msg/internal/utils"
 	"github.com/google/uuid"

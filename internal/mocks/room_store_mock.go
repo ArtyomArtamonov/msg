@@ -58,3 +58,12 @@ func (m *RoomStoreMock) ListRoomsFirst(userId uuid.UUID, pageSize int) ([]model.
 	return utils.Unwrap[[]model.Room](args.Get(0)), utils.Unwrap[error](args.Get(1))
 }
 
+func (m *RoomStoreMock) ListMessages(id uuid.UUID, createdAt time.Time, pageSize int) ([]model.Message, error) {
+	args := m.Called(id, pageSize)
+	return utils.Unwrap[[]model.Message](args.Get(0)), utils.Unwrap[error](args.Get(1))
+}
+
+func (m *RoomStoreMock) ListMessagesFirst(id uuid.UUID, pageSize int) ([]model.Message, error) {
+	args := m.Called(id, pageSize)
+	return utils.Unwrap[[]model.Message](args.Get(0)), utils.Unwrap[error](args.Get(1))
+}

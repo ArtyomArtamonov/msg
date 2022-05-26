@@ -2,7 +2,7 @@ package service
 
 import (
 	"github.com/ArtyomArtamonov/msg/internal/repository"
-	pb "github.com/ArtyomArtamonov/msg/internal/server/proto"
+	pb "github.com/ArtyomArtamonov/msg/internal/server/msg-proto"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"github.com/streadway/amqp"

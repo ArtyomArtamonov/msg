@@ -4,7 +4,7 @@
 // - protoc             v3.20.1
 // source: msg-proto/auth.proto
 
-package proto
+package msg_proto
 
 import (
 	context "context"

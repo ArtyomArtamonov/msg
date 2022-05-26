@@ -3,7 +3,7 @@ package service
 import (
 	"google.golang.org/protobuf/proto"
 	"github.com/streadway/amqp"
-	pb "github.com/ArtyomArtamonov/msg/internal/server/proto"
+	pb "github.com/ArtyomArtamonov/msg/internal/server/msg-proto"
 )
 
 type AMQPProducer interface {

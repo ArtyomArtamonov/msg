@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/ArtyomArtamonov/msg/internal/model"
-	"github.com/ArtyomArtamonov/msg/internal/server/proto"
+	proto "github.com/ArtyomArtamonov/msg/internal/server/msg-proto"
 	"github.com/ArtyomArtamonov/msg/internal/utils"
 	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
@@ -162,7 +162,7 @@ func TestApiServer_ListRoomsFailsIfDatabaseFailsWithPageTokenPresent(t *testing.
 	res, err := apiServer.ListRooms(
 		ctx,
 		&proto.ListRoomsRequest{
-			PageToken: &wrapperspb.StringValue{
+			NextToken: &wrapperspb.StringValue{
 				Value: token,
 			},
 			PageSize: int32(pageSize),
@@ -193,7 +193,7 @@ func TestApiServer_ListRoomsFailsIfInvalidPageToken(t *testing.T) {
 	res, err := apiServer.ListRooms(
 		ctx,
 		&proto.ListRoomsRequest{
-			PageToken: &wrapperspb.StringValue{
+			NextToken: &wrapperspb.StringValue{
 				Value: token,
 			},
 			PageSize: int32(pageSize),
@@ -240,7 +240,7 @@ func TestApiServer_ListRoomsSuccess(t *testing.T) {
 	res2, err := apiServer.ListRooms(
 		ctx,
 		&proto.ListRoomsRequest{
-			PageToken: &wrapperspb.StringValue{
+			NextToken: &wrapperspb.StringValue{
 				Value: nextToken,
 			},
 			PageSize: int32(pageSize),

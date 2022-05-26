@@ -7,7 +7,7 @@ import (
 
 	"github.com/ArtyomArtamonov/msg/internal/mocks"
 	"github.com/ArtyomArtamonov/msg/internal/model"
-	pb "github.com/ArtyomArtamonov/msg/internal/server/proto"
+	pb "github.com/ArtyomArtamonov/msg/internal/server/msg-proto"
 	"github.com/golang-jwt/jwt"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"

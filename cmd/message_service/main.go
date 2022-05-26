@@ -7,7 +7,7 @@ import (
 
 	"github.com/ArtyomArtamonov/msg/internal/repository"
 	"github.com/ArtyomArtamonov/msg/internal/server"
-	"github.com/ArtyomArtamonov/msg/internal/server/proto"
+	proto "github.com/ArtyomArtamonov/msg/internal/server/msg-proto"
 	"github.com/ArtyomArtamonov/msg/internal/service"
 	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
