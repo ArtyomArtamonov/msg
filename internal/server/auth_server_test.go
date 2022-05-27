@@ -36,7 +36,7 @@ func TestAuthServer_RegisterFailsIfUserAlreadyExists(t *testing.T) {
 		})
 
 	assert.Nil(t, res)
-	assert.ErrorIs(t, status.Errorf(codes.AlreadyExists, "user already exists"), err)
+	assert.ErrorIs(t, err, status.Errorf(codes.AlreadyExists, "user already exists"))
 }
 
 func TestAuthServer_RegisterFailsIfUsernameTooLong(t *testing.T) {
@@ -54,7 +54,7 @@ func TestAuthServer_RegisterFailsIfUsernameTooLong(t *testing.T) {
 		})
 
 	assert.Nil(t, res)
-	assert.ErrorIs(t, status.Error(codes.InvalidArgument, "username could not be more than 15 characters"), err)
+	assert.ErrorIs(t, err, status.Error(codes.InvalidArgument, "username could not be more than 15 characters"))
 }
 
 func TestAuthServer_RegisterFailsIfPasswordTooShort(t *testing.T) {
@@ -73,7 +73,7 @@ func TestAuthServer_RegisterFailsIfPasswordTooShort(t *testing.T) {
 		})
 
 	assert.Nil(t, res)
-	assert.ErrorIs(t, status.Error(codes.InvalidArgument, "password could not be less than 6 characters"), err)
+	assert.ErrorIs(t, err, status.Error(codes.InvalidArgument, "password could not be less than 6 characters"))
 }
 
 func TestAuthServer_RegisterFailsIfJWTFails(t *testing.T) {
@@ -94,7 +94,7 @@ func TestAuthServer_RegisterFailsIfJWTFails(t *testing.T) {
 		})
 
 	assert.Nil(t, res)
-	assert.ErrorIs(t, status.Error(codes.Internal, "could not generate token pair"), err)
+	assert.ErrorIs(t, err, status.Error(codes.Internal, "could not generate token pair"))
 }
 
 func TestAuthServer_RegisterFailsIfUserStoreFails(t *testing.T) {
@@ -205,7 +205,7 @@ func TestAuthServer_LoginFailsIfUserDoesNotExist(t *testing.T) {
 		})
 
 	assert.Nil(t, res)
-	assert.ErrorIs(t, status.Errorf(codes.NotFound, "incorrect username or password"), err)
+	assert.ErrorIs(t, err, status.Errorf(codes.NotFound, "incorrect username or password"))
 }
 
 func TestAuthServer_LoginFailsIfPasswordIsNotCorrect(t *testing.T) {
@@ -229,7 +229,7 @@ func TestAuthServer_LoginFailsIfPasswordIsNotCorrect(t *testing.T) {
 		})
 
 	assert.Nil(t, res)
-	assert.ErrorIs(t, status.Errorf(codes.NotFound, "incorrect username or password"), err)
+	assert.ErrorIs(t, err, status.Errorf(codes.NotFound, "incorrect username or password"))
 }
 
 func TestAuthServer_LoginFailsIfJWTFails(t *testing.T) {
@@ -255,7 +255,7 @@ func TestAuthServer_LoginFailsIfJWTFails(t *testing.T) {
 		})
 
 	assert.Nil(t, res)
-	assert.ErrorIs(t, status.Error(codes.Internal, "could not generate token pair"), err)
+	assert.ErrorIs(t, err, status.Error(codes.Internal, "could not generate token pair"))
 }
 
 func TestAuthServer_LoginFailsIfRefreshTokenStoreFails(t *testing.T) {
@@ -349,7 +349,7 @@ func TestAuthServer_RefreshFailsIfInvalidRefresh(t *testing.T) {
 		})
 
 	assert.Nil(t, res)
-	assert.ErrorIs(t, status.Error(codes.InvalidArgument, "could not parse refresh token"), err)
+	assert.ErrorIs(t, err, status.Error(codes.InvalidArgument, "could not parse refresh token"))
 }
 
 func TestAuthServer_RefreshFailsIfRefreshTokenStoreFails(t *testing.T) {
@@ -367,7 +367,7 @@ func TestAuthServer_RefreshFailsIfRefreshTokenStoreFails(t *testing.T) {
 		})
 
 	assert.Nil(t, res)
-	assert.ErrorIs(t, status.Error(codes.Unauthenticated, "refresh token does not exists"), err)
+	assert.ErrorIs(t, err, status.Error(codes.Unauthenticated, "refresh token does not exists"))
 }
 
 func TestAuthServer_RefreshFailsIfRefreshTokenExpires(t *testing.T) {
@@ -391,7 +391,7 @@ func TestAuthServer_RefreshFailsIfRefreshTokenExpires(t *testing.T) {
 		})
 
 	assert.Nil(t, res)
-	assert.ErrorIs(t, status.Error(codes.Unauthenticated, "refresh token is expired"), err)
+	assert.ErrorIs(t, err, status.Error(codes.Unauthenticated, "refresh token is expired"))
 }
 
 func TestAuthServer_RefreshFailsIfUserIsNotFound(t *testing.T) {
@@ -417,7 +417,7 @@ func TestAuthServer_RefreshFailsIfUserIsNotFound(t *testing.T) {
 		})
 
 	assert.Nil(t, res)
-	assert.ErrorIs(t, status.Error(codes.Internal, "hmm... this is strange. That could not possibly happen"), err)
+	assert.ErrorIs(t, err, status.Error(codes.Internal, "hmm... this is strange. That could not possibly happen"))
 }
 
 func TestAuthServer_RefreshFailsIfJWTFails(t *testing.T) {
@@ -445,7 +445,7 @@ func TestAuthServer_RefreshFailsIfJWTFails(t *testing.T) {
 		})
 
 	assert.Nil(t, res)
-	assert.ErrorIs(t, status.Error(codes.Internal, "could not generate token pair"), err)
+	assert.ErrorIs(t, err, status.Error(codes.Internal, "could not generate token pair"))
 }
 
 func TestAuthServer_RefreshFailsIfDeletingTokenFails(t *testing.T) {

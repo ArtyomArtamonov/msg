@@ -4,9 +4,9 @@ import (
 	"time"
 
 	"github.com/ArtyomArtamonov/msg/internal/model"
+	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
-	sq "github.com/Masterminds/squirrel"
 )
 
 type MessageStore interface {
@@ -25,13 +25,13 @@ func NewPostgresMessageStore(db *sqlx.DB) *PostgresMessageStore {
 	}
 }
 
-func (s *PostgresMessageStore) ListMessages(id uuid.UUID, createdAt time.Time, pageSize int) ([]model.Message, error) {
+func (s *PostgresMessageStore) ListMessages(chatId uuid.UUID, createdAt time.Time, pageSize int) ([]model.Message, error) {
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 	sql, _, err := psql.
 		Select("id, room_id, user_id, text, created_at").
 		From("messages").
 		Where(sq.And{
-			sq.Eq{"user_id": id},
+			sq.Eq{"room_id": chatId},
 			sq.Lt{"created_at": createdAt},
 		}).
 		OrderBy("created_at DESC").
@@ -42,7 +42,7 @@ func (s *PostgresMessageStore) ListMessages(id uuid.UUID, createdAt time.Time, p
 	}
 
 	messages := []model.Message{}
-	err = s.db.Select(&messages, sql, id, createdAt)
+	err = s.db.Select(&messages, sql, chatId, createdAt)
 	if err != nil {
 		return nil, err
 	}
@@ -50,12 +50,12 @@ func (s *PostgresMessageStore) ListMessages(id uuid.UUID, createdAt time.Time, p
 	return messages, err
 }
 
-func (s *PostgresMessageStore) ListMessagesFirst(id uuid.UUID, pageSize int) ([]model.Message, error) {
+func (s *PostgresMessageStore) ListMessagesFirst(chatId uuid.UUID, pageSize int) ([]model.Message, error) {
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 	sql, _, err := psql.
 		Select("id, room_id, user_id, text, created_at").
 		From("messages").
-		Where(sq.Eq{"user_id": id}).
+		Where(sq.Eq{"room_id": chatId}).
 		OrderBy("created_at DESC").
 		Limit(uint64(pageSize)).
 		ToSql()
@@ -64,7 +64,7 @@ func (s *PostgresMessageStore) ListMessagesFirst(id uuid.UUID, pageSize int) ([]
 	}
 
 	messages := []model.Message{}
-	err = s.db.Select(&messages, sql, id)
+	err = s.db.Select(&messages, sql, chatId)
 	if err != nil {
 		return nil, err
 	}

@@ -9,6 +9,7 @@ import (
 	"github.com/ArtyomArtamonov/msg/internal/repository"
 	pb "github.com/ArtyomArtamonov/msg/internal/server/msg-proto"
 	"github.com/ArtyomArtamonov/msg/internal/service"
+	"github.com/ArtyomArtamonov/msg/internal/utils"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
@@ -147,14 +148,28 @@ func (s *ApiServer) ListMessages(ctx context.Context, req *pb.ListMessagesReques
 		return nil, err
 	}
 
-	id, err := uuid.Parse(claims.Id)
+	userId, err := uuid.Parse(claims.Id)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "cannot parse uuid: %v", err)
+	}
+
+	chatId, err := uuid.Parse(req.ChatId)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "could not parse uuid")
 	}
 
+	roomUserIds, err := s.roomStore.UsersInRoom(chatId)
+	if err != nil {
+		return nil, status.Error(codes.NotFound, "")
+	}
+
+	if !utils.ArrayContains(roomUserIds, userId) {
+		return nil, status.Error(codes.PermissionDenied, "")
+	}
+
 	var messages []model.Message
 	if req.NextToken == nil {
-		messages, err = s.messageStore.ListMessagesFirst(id, int(req.PageSize))
+		messages, err = s.messageStore.ListMessagesFirst(chatId, int(req.PageSize))
 		if err != nil {
 			return nil, err
 		}
@@ -163,7 +178,7 @@ func (s *ApiServer) ListMessages(ctx context.Context, req *pb.ListMessagesReques
 		if e != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "cannot parse next token: %v", e)
 		}
-		messages, err = s.messageStore.ListMessages(id, *lastMessageTime, int(req.PageSize))
+		messages, err = s.messageStore.ListMessages(chatId, *lastMessageTime, int(req.PageSize))
 	}
 
 	var nextToken string
@@ -201,6 +216,11 @@ func (s *ApiServer) SendMessage(ctx context.Context, req *pb.MessageRequest) (*p
 		return nil, err
 	}
 
+	userId, err := uuid.Parse(claims.Id)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "cannot parse uuid: %v", err)
+	}
+
 	senderId, err := uuid.Parse(claims.Id)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "could not parse uuid")
@@ -210,6 +230,7 @@ func (s *ApiServer) SendMessage(ctx context.Context, req *pb.MessageRequest) (*p
 
 	if !ok {
 		// Dialog room is not created, first message is about to send
+
 		userId := req.Recipient.(*pb.MessageRequest_UserId)
 
 		recipientId, err := uuid.Parse(userId.UserId)
@@ -243,43 +264,48 @@ func (s *ApiServer) SendMessage(ctx context.Context, req *pb.MessageRequest) (*p
 			Message: message.ToPbMessage(),
 		}
 		return response, nil
-	}
+	} else {
+		// Sending message to already existing room
 
-	// Sending message to already existing room
-	roomId, err := uuid.Parse(room.RoomId)
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "could not parse uuid")
-	}
+		roomId, err := uuid.Parse(room.RoomId)
+		if err != nil {
+			return nil, status.Error(codes.InvalidArgument, "could not parse uuid")
+		}
 
-	message := model.NewMessage(senderId, roomId, req.Message)
-	err = s.messageStore.SendMessage(message)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "could not send message: %v", err)
-	}
+		roomUserIds, err := s.roomStore.UsersInRoom(roomId)
+		if err != nil {
+			return nil, status.Error(codes.NotFound, "")
+		}
 
-	userUUIDs, err := s.roomStore.UsersInRoom(roomId)
-	if err != nil {
-		logrus.Errorf("could not get users in room: %v", err)
-	}
-	var userIds []string
-	for _, userId := range userUUIDs {
-		userIds = append(userIds, userId.String())
-	}
+		if !utils.ArrayContains(roomUserIds, userId) {
+			return nil, status.Error(codes.PermissionDenied, "")
+		}
 
-	messageDelivery := &pb.MessageDelivery{
-		Message: message.ToPbMessage(),
-		UserIds: userIds,
-	}
-	err = s.amqpManager.Produce(messageDelivery)
-	if err != nil {
-		logrus.Errorf("could not send message by amqp: %v", err)
-	}
+		message := model.NewMessage(senderId, roomId, req.Message)
+		err = s.messageStore.SendMessage(message)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "could not send message: %v", err)
+		}
+		var recipientUserIds []string
+		for _, roomUserId := range roomUserIds {
+			recipientUserIds = append(recipientUserIds, roomUserId.String())
+		}
 
-	response := &pb.MessageResponse{
-		RoomId:  room.RoomId,
-		Message: message.ToPbMessage(),
+		messageDelivery := &pb.MessageDelivery{
+			Message: message.ToPbMessage(),
+			UserIds: recipientUserIds,
+		}
+		err = s.amqpManager.Produce(messageDelivery)
+		if err != nil {
+			logrus.Errorf("could not send message by amqp: %v", err)
+		}
+
+		response := &pb.MessageResponse{
+			RoomId:  room.RoomId,
+			Message: message.ToPbMessage(),
+		}
+		return response, nil
 	}
-	return response, nil
 }
 
 func decodePageToken(token string) (*time.Time, error) {

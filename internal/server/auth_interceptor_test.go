@@ -41,7 +41,7 @@ func TestAuthInterceptor_UnaryFailsWithInvalidToken(t *testing.T) {
 	)
 
 	assert.Nil(t, res)
-	assert.ErrorIs(t, expectedError, err)
+	assert.ErrorIs(t, err, expectedError)
 }
 
 func TestAuthInterceptor_UnaryFailsWithoutEndpointPermissions(t *testing.T) {
@@ -72,7 +72,7 @@ func TestAuthInterceptor_UnaryFailsWithoutEndpointPermissions(t *testing.T) {
 	)
 
 	assert.Nil(t, res)
-	assert.ErrorIs(t, status.Errorf(codes.PermissionDenied, "user does not have permission"), err)
+	assert.ErrorIs(t, err, status.Errorf(codes.PermissionDenied, "user does not have permission"))
 }
 
 func TestAuthInterceptor_UnarySussessForAnyone(t *testing.T) {
@@ -114,7 +114,7 @@ func TestAuthInterceptor_UnarySussessForAnyone(t *testing.T) {
 	)
 
 	assert.Equal(t, expectedResponse, res)
-	assert.ErrorIs(t, expectedError, err)
+	assert.ErrorIs(t, err, expectedError)
 }
 
 func TestAuthInterceptor_UnarySussessWithPermissions(t *testing.T) {
@@ -156,7 +156,7 @@ func TestAuthInterceptor_UnarySussessWithPermissions(t *testing.T) {
 	)
 
 	assert.Equal(t, expectedResponse, res)
-	assert.ErrorIs(t, expectedError, err)
+	assert.ErrorIs(t, err, expectedError)
 }
 
 func TestAuthInterceptor_StreamFailsWithInvalidToken(t *testing.T) {
@@ -186,7 +186,7 @@ func TestAuthInterceptor_StreamFailsWithInvalidToken(t *testing.T) {
 		},
 	)
 
-	assert.ErrorIs(t, expectedError, err)
+	assert.ErrorIs(t, err, expectedError)
 }
 
 func TestAuthInterceptor_StreamFailsWithoutEndpointPermissions(t *testing.T) {
@@ -218,7 +218,7 @@ func TestAuthInterceptor_StreamFailsWithoutEndpointPermissions(t *testing.T) {
 		},
 	)
 
-	assert.ErrorIs(t, status.Errorf(codes.PermissionDenied, "user does not have permission"), err)
+	assert.ErrorIs(t, err, status.Errorf(codes.PermissionDenied, "user does not have permission"))
 }
 
 func TestAuthInterceptor_StreamSussessForAnyone(t *testing.T) {
@@ -252,7 +252,7 @@ func TestAuthInterceptor_StreamSussessForAnyone(t *testing.T) {
 		},
 	)
 
-	assert.ErrorIs(t, expectedError, err)
+	assert.ErrorIs(t, err, expectedError)
 }
 
 func TestAuthInterceptor_StreamSussessWithPermissions(t *testing.T) {
@@ -286,5 +286,5 @@ func TestAuthInterceptor_StreamSussessWithPermissions(t *testing.T) {
 		},
 	)
 
-	assert.ErrorIs(t, expectedError, err)
+	assert.ErrorIs(t, err, expectedError)
 }

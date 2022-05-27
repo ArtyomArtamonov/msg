@@ -26,15 +26,15 @@ func TestApiServer_CreateRoomSuccess(t *testing.T) {
 			"f13550bb-ea7d-4c5b-b9a4-a352c13f1232",
 		},
 	}
-	
+
 	expectedClaimsResult := &model.UserClaims{
 		StandardClaims: jwt.StandardClaims{
 			Id: "7815f165-6e48-452d-8fe9-b4075b35e194",
 		},
 	}
 	expectedResponse := proto.CreateRoomStatus{
-		Name:   "room_name",
-		Users:  []string{
+		Name: "room_name",
+		Users: []string{
 			"7815f165-6e48-452d-8fe9-b4075b35e194",
 			"f13550bb-ea7d-4c5b-b9a4-a352c13f1232",
 		},
@@ -66,7 +66,7 @@ func TestApiServer_ListRoomsFailsIfPageSizeExceedsLimit(t *testing.T) {
 	)
 
 	assert.Nil(t, res)
-	assert.ErrorIs(t, status.Error(codes.InvalidArgument, "page_size cannot be bigger than 100"), err)
+	assert.ErrorIs(t, err, status.Error(codes.InvalidArgument, "page_size cannot be bigger than 100"))
 }
 
 func TestApiServer_ListRoomsFailsIfAuthFails(t *testing.T) {
@@ -85,7 +85,7 @@ func TestApiServer_ListRoomsFailsIfAuthFails(t *testing.T) {
 	)
 
 	assert.Nil(t, res)
-	assert.ErrorIs(t, expectedError, err)
+	assert.ErrorIs(t, err, expectedError)
 }
 
 func TestApiServer_ListRoomsFailsIfInvalidUserId(t *testing.T) {
@@ -107,7 +107,7 @@ func TestApiServer_ListRoomsFailsIfInvalidUserId(t *testing.T) {
 	)
 
 	assert.Nil(t, res)
-	assert.ErrorIs(t, status.Errorf(codes.Internal, "cannot parse uuid: %v", "invalid UUID length: 0"), err)
+	assert.ErrorIs(t, err, status.Errorf(codes.Internal, "cannot parse uuid: %v", "invalid UUID length: 0"))
 }
 
 func TestApiServer_ListRoomsFailsIfDatabaseFailsWithNoPageToken(t *testing.T) {
@@ -136,7 +136,7 @@ func TestApiServer_ListRoomsFailsIfDatabaseFailsWithNoPageToken(t *testing.T) {
 	)
 
 	assert.Nil(t, res)
-	assert.ErrorIs(t, status.Errorf(codes.Internal, "cannot get rooms: %v", expectedError), err)
+	assert.ErrorIs(t, err, expectedError)
 }
 
 func TestApiServer_ListRoomsFailsIfDatabaseFailsWithPageTokenPresent(t *testing.T) {
@@ -170,7 +170,7 @@ func TestApiServer_ListRoomsFailsIfDatabaseFailsWithPageTokenPresent(t *testing.
 	)
 
 	assert.Nil(t, res)
-	assert.ErrorIs(t, status.Errorf(codes.Internal, "cannot get rooms: %v", expectedError), err)
+	assert.ErrorIs(t, err, status.Errorf(codes.Internal, "cannot get rooms: %v", expectedError))
 }
 
 func TestApiServer_ListRoomsFailsIfInvalidPageToken(t *testing.T) {
@@ -201,7 +201,7 @@ func TestApiServer_ListRoomsFailsIfInvalidPageToken(t *testing.T) {
 	)
 
 	assert.Nil(t, res)
-	assert.ErrorIs(t, status.Errorf(codes.InvalidArgument, "cannot parse next token: %v", "illegal base64 data at input byte 4"), err)
+	assert.ErrorIs(t, err, status.Errorf(codes.InvalidArgument, "cannot parse next token: %v", "illegal base64 data at input byte 4"))
 }
 
 func TestApiServer_ListRoomsSuccess(t *testing.T) {

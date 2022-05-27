@@ -146,7 +146,7 @@ func TestJWTManager_GetAndVerifyClaimsFailsIfNoMetadata(t *testing.T) {
 	res, err := jwtManager.GetAndVerifyClaims(contextMock)
 
 	assert.Nil(t, res)
-	assert.ErrorIs(t, status.Error(codes.Unauthenticated, "metadata is not provided"), err)
+	assert.ErrorIs(t, err, status.Error(codes.Unauthenticated, "metadata is not provided"))
 }
 
 func TestJWTManager_GetAndVerifyClaimsFailsIfNoToken(t *testing.T) {
@@ -161,7 +161,7 @@ func TestJWTManager_GetAndVerifyClaimsFailsIfNoToken(t *testing.T) {
 	res, err := jwtManager.GetAndVerifyClaims(contextMock)
 
 	assert.Nil(t, res)
-	assert.ErrorIs(t, status.Error(codes.Unauthenticated, "authorization token is not provided"), err)
+	assert.ErrorIs(t, err, status.Error(codes.Unauthenticated, "authorization token is not provided"))
 }
 
 func TestJWTManager_GetAndVerifyClaimsFailsIfTokenIsInvalid(t *testing.T) {
@@ -177,7 +177,7 @@ func TestJWTManager_GetAndVerifyClaimsFailsIfTokenIsInvalid(t *testing.T) {
 	res, err := jwtManager.GetAndVerifyClaims(contextMock)
 
 	assert.Nil(t, res)
-	assert.ErrorIs(t, status.Errorf(codes.Unauthenticated, "authorization token is invalid: %v", "invalid token: token contains an invalid number of segments"), err)
+	assert.ErrorIs(t, err, status.Errorf(codes.Unauthenticated, "authorization token is invalid: %v", "invalid token: token contains an invalid number of segments"))
 }
 
 func TestJWTManager_GetAndVerifyClaimsSuccess(t *testing.T) {

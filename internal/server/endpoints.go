@@ -7,8 +7,10 @@ type Endpoints struct {
 }
 
 type apiServiceEndpoints struct {
-	CreateRoom string
-	ListRooms  string
+	CreateRoom   string
+	ListRooms    string
+	SendMessage  string
+	ListMessages string
 }
 
 type authServiceEndpoints struct {
@@ -18,7 +20,6 @@ type authServiceEndpoints struct {
 }
 
 type messageServiceEndpoints struct {
-	SendMessage string
 	GetMessages string
 }
 
@@ -28,8 +29,10 @@ func NewEndpoints() *Endpoints {
 	messageServicePath := "/message.MessageService/"
 	return &Endpoints{
 		ApiService: apiServiceEndpoints{
-			CreateRoom: apiServicePath + "CreateRoom",
-			ListRooms:  apiServicePath + "ListRooms",
+			CreateRoom:   apiServicePath + "CreateRoom",
+			ListRooms:    apiServicePath + "ListRooms",
+			SendMessage:  messageServicePath + "SendMessage",
+			ListMessages: messageServicePath + "ListMessages",
 		},
 		AuthService: authServiceEndpoints{
 			Login:    authServicePath + "Login",
@@ -37,7 +40,6 @@ func NewEndpoints() *Endpoints {
 			Refresh:  authServicePath + "Refresh",
 		},
 		MessageService: messageServiceEndpoints{
-			SendMessage: messageServicePath + "SendMessage",
 			GetMessages: messageServicePath + "GetMessages",
 		},
 	}
