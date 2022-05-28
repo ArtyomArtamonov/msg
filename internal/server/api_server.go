@@ -214,11 +214,6 @@ func (s *ApiServer) SendMessage(ctx context.Context, req *pb.MessageRequest) (*p
 		return nil, err
 	}
 
-	userId, err := uuid.Parse(claims.Id)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "cannot parse uuid: %v", err)
-	}
-
 	senderId, err := uuid.Parse(claims.Id)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "could not parse uuid")
@@ -275,7 +270,7 @@ func (s *ApiServer) SendMessage(ctx context.Context, req *pb.MessageRequest) (*p
 			return nil, status.Error(codes.NotFound, "")
 		}
 
-		if !utils.ArrayContains(roomUserIds, userId) {
+		if !utils.ArrayContains(roomUserIds, senderId) {
 			return nil, status.Error(codes.PermissionDenied, "")
 		}
 
