@@ -142,8 +142,8 @@ func TestApiServer_ListRoomsFailsIfDatabaseFailsWithNoPageToken(t *testing.T) {
 func TestApiServer_ListRoomsFailsIfDatabaseFailsWithPageTokenPresent(t *testing.T) {
 	setupTest()
 
-	token := encodePageToken(utils.Now())
-	lastMessageTime, _ := decodePageToken(token)
+	token := utils.EncodePageToken(utils.Now())
+	lastMessageTime, _ := utils.DecodePageToken(token)
 	expectedError := errors.New("some_error")
 
 	ctx := context.TODO()
@@ -232,7 +232,7 @@ func TestApiServer_ListRoomsSuccess(t *testing.T) {
 	)
 
 	nextToken := res1.NextToken.Value
-	lastMessageTime, _ := decodePageToken(nextToken)
+	lastMessageTime, _ := utils.DecodePageToken(nextToken)
 	roomStoreMock.On("ListRooms", userId, *lastMessageTime, pageSize).Return([]model.Room{
 		room,
 	}, nil)

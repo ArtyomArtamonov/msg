@@ -2,8 +2,6 @@ package server
 
 import (
 	"context"
-	"encoding/base64"
-	"time"
 
 	"github.com/ArtyomArtamonov/msg/internal/model"
 	"github.com/ArtyomArtamonov/msg/internal/repository"
@@ -98,7 +96,7 @@ func (s *ApiServer) ListRooms(ctx context.Context, req *pb.ListRoomsRequest) (*p
 			return nil, err
 		}
 	} else {
-		lastMessageTime, e := decodePageToken(req.NextToken.Value)
+		lastMessageTime, e := utils.DecodePageToken(req.NextToken.Value)
 		if e != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "cannot parse next token: %v", e)
 		}
@@ -114,7 +112,7 @@ func (s *ApiServer) ListRooms(ctx context.Context, req *pb.ListRoomsRequest) (*p
 		nextToken = ""
 	} else {
 		lastRoom := rooms[len(rooms)-1]
-		nextToken = encodePageToken(lastRoom.LastMessageTime)
+		nextToken = utils.EncodePageToken(lastRoom.LastMessageTime)
 	}
 
 	pbRooms := []*pb.Room{}
@@ -174,7 +172,7 @@ func (s *ApiServer) ListMessages(ctx context.Context, req *pb.ListMessagesReques
 			return nil, err
 		}
 	} else {
-		lastMessageTime, e := decodePageToken(req.NextToken.Value)
+		lastMessageTime, e := utils.DecodePageToken(req.NextToken.Value)
 		if e != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "cannot parse next token: %v", e)
 		}
@@ -186,7 +184,7 @@ func (s *ApiServer) ListMessages(ctx context.Context, req *pb.ListMessagesReques
 		nextToken = ""
 	} else {
 		lastMessage := messages[len(messages)-1]
-		nextToken = encodePageToken(lastMessage.CreatedAt)
+		nextToken = utils.EncodePageToken(lastMessage.CreatedAt)
 	}
 
 	pbMessages := []*pb.Message{}
@@ -306,22 +304,4 @@ func (s *ApiServer) SendMessage(ctx context.Context, req *pb.MessageRequest) (*p
 		}
 		return response, nil
 	}
-}
-
-func decodePageToken(token string) (*time.Time, error) {
-	buf, err := base64.StdEncoding.DecodeString(token)
-	if err != nil {
-		return nil, err
-	}
-
-	t, err := time.Parse(time.RFC3339, string(buf))
-	if err != nil {
-		return nil, err
-	}
-
-	return &t, nil
-}
-
-func encodePageToken(lastMessageDate time.Time) string {
-	return base64.StdEncoding.EncodeToString([]byte(lastMessageDate.Format(time.RFC3339)))
 }
