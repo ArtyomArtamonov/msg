@@ -13,8 +13,8 @@ import (
 )
 
 type SessionStore interface {
-	Add(*model.Session) error
-	Send(uuid.UUID, *pb.MessageStreamResponse) error
+	Add(session *model.Session) error
+	Send(id uuid.UUID, messageStream *pb.MessageStreamResponse) error
 	Delete(id uuid.UUID)
 }
 

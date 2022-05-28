@@ -41,7 +41,7 @@ func TestApiServer_CreateRoomSuccess(t *testing.T) {
 	}
 
 	jwtManagerMock.On("GetAndVerifyClaims", mock.Anything).Return(expectedClaimsResult, nil)
-	roomStoreMock.On("Add", mock.Anything).Return(nil)
+	roomStoreMock.On("Add", mock.Anything, mock.Anything).Return(nil)
 
 	res, err := apiServer.CreateRoom(
 		context.TODO(),
@@ -126,7 +126,7 @@ func TestApiServer_ListRoomsFailsIfDatabaseFailsWithNoPageToken(t *testing.T) {
 		Role:     model.USER_ROLE,
 	}
 	jwtManagerMock.On("GetAndVerifyClaims", ctx).Return(userClaims, nil)
-	roomStoreMock.On("ListRoomsFirst", userId, pageSize).Return(nil, expectedError)
+	roomStoreMock.On("ListRoomsFirst", mock.Anything, userId, pageSize).Return(nil, expectedError)
 
 	res, err := apiServer.ListRooms(
 		ctx,
@@ -136,7 +136,7 @@ func TestApiServer_ListRoomsFailsIfDatabaseFailsWithNoPageToken(t *testing.T) {
 	)
 
 	assert.Nil(t, res)
-	assert.ErrorIs(t, err, expectedError)
+	assert.ErrorIs(t, expectedError, err)
 }
 
 func TestApiServer_ListRoomsFailsIfDatabaseFailsWithPageTokenPresent(t *testing.T) {
@@ -157,7 +157,7 @@ func TestApiServer_ListRoomsFailsIfDatabaseFailsWithPageTokenPresent(t *testing.
 		Role:     model.USER_ROLE,
 	}
 	jwtManagerMock.On("GetAndVerifyClaims", ctx).Return(userClaims, nil)
-	roomStoreMock.On("ListRooms", userId, *lastMessageTime, pageSize).Return(nil, expectedError)
+	roomStoreMock.On("ListRooms", mock.Anything, userId, *lastMessageTime, pageSize).Return(nil, expectedError)
 
 	res, err := apiServer.ListRooms(
 		ctx,
@@ -219,7 +219,7 @@ func TestApiServer_ListRoomsSuccess(t *testing.T) {
 	}
 	jwtManagerMock.On("GetAndVerifyClaims", ctx).Return(userClaims, nil)
 	room := *model.NewRoom("name", true)
-	roomStoreMock.On("ListRoomsFirst", userId, pageSize).Return([]model.Room{
+	roomStoreMock.On("ListRoomsFirst", mock.Anything, userId, pageSize).Return([]model.Room{
 		room,
 		room,
 	}, nil)
@@ -233,7 +233,7 @@ func TestApiServer_ListRoomsSuccess(t *testing.T) {
 
 	nextToken := res1.NextToken.Value
 	lastMessageTime, _ := utils.DecodePageToken(nextToken)
-	roomStoreMock.On("ListRooms", userId, *lastMessageTime, pageSize).Return([]model.Room{
+	roomStoreMock.On("ListRooms", mock.Anything, userId, *lastMessageTime, pageSize).Return([]model.Room{
 		room,
 	}, nil)
 

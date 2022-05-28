@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -13,14 +14,14 @@ import (
 )
 
 type RoomStore interface {
-	AddAndSendMessage(room *model.Room, message *model.Message) (*model.Room, error)
-	Add(room *model.Room) error
-	Get(id uuid.UUID) (*model.Room, error)
-	FindDialogRoom(userId1, userId2 uuid.UUID) (*model.Room, error)
-	UsersInRoom(id uuid.UUID) ([]uuid.UUID, error)
-	FindByIds(ids ...uuid.UUID) ([]model.User, error)
-	ListRooms(userId uuid.UUID, lastMessageDate time.Time, pageSize int) ([]model.Room, error)
-	ListRoomsFirst(userId uuid.UUID, pageSize int) ([]model.Room, error)
+	AddAndSendMessage(ctx context.Context, room *model.Room, message *model.Message) (*model.Room, error)
+	Add(ctx context.Context, room *model.Room) error
+	Get(ctx context.Context, id uuid.UUID) (*model.Room, error)
+	FindDialogRoom(ctx context.Context, userId1, userId2 uuid.UUID) (*model.Room, error)
+	UsersInRoom(ctx context.Context, id uuid.UUID) ([]uuid.UUID, error)
+	FindByIds(ctx context.Context, ids ...uuid.UUID) ([]model.User, error)
+	ListRooms(ctx context.Context, userId uuid.UUID, lastMessageDate time.Time, pageSize int) ([]model.Room, error)
+	ListRoomsFirst(ctx context.Context, userId uuid.UUID, pageSize int) ([]model.Room, error)
 }
 
 type PostgresRoomStore struct {
@@ -33,8 +34,8 @@ func NewPostgresRoomStore(db *sqlx.DB) *PostgresRoomStore {
 	}
 }
 
-func (s *PostgresRoomStore) AddAndSendMessage(room *model.Room, message *model.Message) (*model.Room, error) {
-	r, err := s.FindDialogRoom(room.UserIds[0], room.UserIds[1])
+func (s *PostgresRoomStore) AddAndSendMessage(ctx context.Context, room *model.Room, message *model.Message) (*model.Room, error) {
+	r, err := s.FindDialogRoom(ctx, room.UserIds[0], room.UserIds[1])
 	if err != nil {
 		return r, err
 	}
@@ -45,7 +46,7 @@ func (s *PostgresRoomStore) AddAndSendMessage(room *model.Room, message *model.M
 	}
 	defer tx.Rollback()
 
-	err = tx.Get(&room.Id, "INSERT INTO rooms(id, name, created_at, dialog_room, last_message_time) VALUES($1, $2, $3, $4, $5) RETURNING id",
+	err = tx.GetContext(ctx, &room.Id, "INSERT INTO rooms(id, name, created_at, dialog_room, last_message_time) VALUES($1, $2, $3, $4, $5) RETURNING id",
 		room.Id, room.Name, room.CreatedAt, room.DialogRoom, room.LastMessageTime)
 	if err != nil {
 		return nil, err
@@ -62,7 +63,7 @@ func (s *PostgresRoomStore) AddAndSendMessage(room *model.Room, message *model.M
 
 	message.RoomId = room.Id
 	var messageId uuid.UUID
-	err = tx.Get(&messageId, "INSERT INTO messages(id, room_id, user_id, text, created_at) VALUES($1, $2, $3, $4, $5) RETURNING id",
+	err = tx.GetContext(ctx, &messageId, "INSERT INTO messages(id, room_id, user_id, text, created_at) VALUES($1, $2, $3, $4, $5) RETURNING id",
 		message.Id, message.RoomId, message.UserId, message.Text, message.CreatedAt)
 	if err != nil {
 		return nil, err
@@ -73,14 +74,14 @@ func (s *PostgresRoomStore) AddAndSendMessage(room *model.Room, message *model.M
 	return room, tx.Commit()
 }
 
-func (s *PostgresRoomStore) Add(room *model.Room) error {
+func (s *PostgresRoomStore) Add(ctx context.Context, room *model.Room) error {
 	tx, err := s.db.Beginx()
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
 
-	err = tx.Get(&room.Id, "INSERT INTO rooms(id, name, created_at, dialog_room, last_message_time) VALUES($1, $2, $3, $4, $5) RETURNING id",
+	err = tx.GetContext(ctx, &room.Id, "INSERT INTO rooms(id, name, created_at, dialog_room, last_message_time) VALUES($1, $2, $3, $4, $5) RETURNING id",
 		room.Id, room.Name, room.CreatedAt, room.DialogRoom, room.LastMessageTime)
 	if err != nil {
 		return err
@@ -88,7 +89,7 @@ func (s *PostgresRoomStore) Add(room *model.Room) error {
 
 	for _, userId := range room.UserIds {
 		var room_id uuid.UUID
-		err = tx.Get(&room_id, "INSERT INTO user_in_room(room_id, user_id) VALUES($1, $2) RETURNING room_id",
+		err = tx.GetContext(ctx, &room_id, "INSERT INTO user_in_room(room_id, user_id) VALUES($1, $2) RETURNING room_id",
 			room.Id, userId)
 		if err != nil {
 			return err
@@ -98,17 +99,18 @@ func (s *PostgresRoomStore) Add(room *model.Room) error {
 	return tx.Commit()
 }
 
-func (s *PostgresRoomStore) Get(id uuid.UUID) (*model.Room, error) {
+func (s *PostgresRoomStore) Get(ctx context.Context, id uuid.UUID) (*model.Room, error) {
 	room := new(model.Room)
-	err := s.db.Get(room, "SELECT id, name, created_at, dialog_room, last_message_time FROM rooms WHERE id=$1",
+	err := s.db.GetContext(ctx, room, "SELECT id, name, created_at, dialog_room, last_message_time FROM rooms WHERE id=$1",
 		id)
 
 	return room, err
 }
 
-func (s *PostgresRoomStore) FindDialogRoom(userId1, userId2 uuid.UUID) (*model.Room, error) {
+func (s *PostgresRoomStore) FindDialogRoom(ctx context.Context, userId1, userId2 uuid.UUID) (*model.Room, error) {
 	room := new(model.Room)
-	err := s.db.Get(
+	err := s.db.GetContext(
+		ctx,
 		room,
 		`
 		SELECT DISTINCT rooms.id, rooms.* FROM rooms
@@ -123,9 +125,9 @@ func (s *PostgresRoomStore) FindDialogRoom(userId1, userId2 uuid.UUID) (*model.R
 	return room, status.Error(codes.AlreadyExists, "room already exists")
 }
 
-func (s *PostgresRoomStore) UsersInRoom(id uuid.UUID) ([]uuid.UUID, error) {
+func (s *PostgresRoomStore) UsersInRoom(ctx context.Context, id uuid.UUID) ([]uuid.UUID, error) {
 	userIds := []string{}
-	err := s.db.Select(&userIds, "SELECT user_id FROM user_in_room WHERE room_id=$1", id)
+	err := s.db.SelectContext(ctx, &userIds, "SELECT user_id FROM user_in_room WHERE room_id=$1", id)
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +144,9 @@ func (s *PostgresRoomStore) UsersInRoom(id uuid.UUID) ([]uuid.UUID, error) {
 	return userUUIDs, nil
 }
 
-func (s *PostgresRoomStore) FindByIds(ids ...uuid.UUID) ([]model.User, error) {
+func (s *PostgresRoomStore) FindByIds(ctx context.Context, ids ...uuid.UUID) ([]model.User, error) {
+	// TODO: rewrite with more safety. 
+	// We can pass array with $1
 	q := "SELECT * FROM users WHERE"
 	for _, name := range ids {
 		q += fmt.Sprintf(" id='%s' OR", name)
@@ -150,7 +154,7 @@ func (s *PostgresRoomStore) FindByIds(ids ...uuid.UUID) ([]model.User, error) {
 	q = q[:len(q)-3] // remove last OR
 
 	users := []model.User{}
-	err := s.db.Select(&users, q)
+	err := s.db.SelectContext(ctx, &users, q)
 	if err != nil {
 		return nil, err
 	}
@@ -162,13 +166,14 @@ func (s *PostgresRoomStore) FindByIds(ids ...uuid.UUID) ([]model.User, error) {
 	return users, nil
 }
 
-func (s *PostgresRoomStore) ListRooms(userId uuid.UUID, lastMessageDate time.Time, pageSize int) ([]model.Room, error) {
+func (s *PostgresRoomStore) ListRooms(ctx context.Context, userId uuid.UUID, lastMessageDate time.Time, pageSize int) ([]model.Room, error) {
 	res := []model.Room{}
 	// This SQL Query has a workaround in it: first and second returned rows are actually the same.
 	// But removing first row somehow ruins everything.
 	// We are using unsafe here only to silently not map first row
 	udb := s.db.Unsafe()
-	err := udb.Select(
+	err := udb.SelectContext(
+		ctx,
 		&res,
 		`
 		SELECT DISTINCT rooms.id, rooms.* FROM rooms
@@ -185,13 +190,14 @@ func (s *PostgresRoomStore) ListRooms(userId uuid.UUID, lastMessageDate time.Tim
 	return res, nil
 }
 
-func (s *PostgresRoomStore) ListRoomsFirst(userId uuid.UUID, pageSize int) ([]model.Room, error) {
+func (s *PostgresRoomStore) ListRoomsFirst(ctx context.Context, userId uuid.UUID, pageSize int) ([]model.Room, error) {
 	res := []model.Room{}
 	// This SQL Query has a workaround in it: first and second returned rows are actually the same.
 	// But removing first row somehow ruins everything.
 	// We are using unsafe here only to silently not map first row
 	udb := s.db.Unsafe()
-	err := udb.Select(
+	err := udb.SelectContext(
+		ctx,
 		&res,
 		`
 		SELECT DISTINCT rooms.id, rooms.* FROM rooms

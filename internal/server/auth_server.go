@@ -32,7 +32,7 @@ func NewAuthServer(userStore repository.UserStore, refreshTokenStore repository.
 }
 
 func (s *AuthServer) Register(ctx context.Context, req *pb.RegisterRequest) (*pb.TokenResponse, error) {
-	if user, _ := s.userStore.FindByUsername(req.Username); user != nil {
+	if user, _ := s.userStore.FindByUsername(ctx, req.Username); user != nil {
 		return nil, status.Errorf(codes.AlreadyExists, "user already exists")
 	}
 
@@ -55,11 +55,11 @@ func (s *AuthServer) Register(ctx context.Context, req *pb.RegisterRequest) (*pb
 		return nil, status.Error(codes.Internal, "could not generate token pair")
 	}
 
-	if err := s.userStore.Save(user); err != nil {
+	if err := s.userStore.Save(ctx, user); err != nil {
 		return nil, status.Errorf(codes.Internal, "could not save user: %v", err)
 	}
 
-	if err := s.refreshTokenStore.Add(tokenPair.RefreshToken); err != nil {
+	if err := s.refreshTokenStore.Add(ctx, tokenPair.RefreshToken); err != nil {
 		return nil, status.Errorf(codes.Internal, "could not save refresh token to database: %v", err)
 	}
 
@@ -73,7 +73,7 @@ func (s *AuthServer) Register(ctx context.Context, req *pb.RegisterRequest) (*pb
 }
 
 func (s *AuthServer) Login(ctx context.Context, req *pb.LoginRequest) (*pb.TokenResponse, error) {
-	user, err := s.userStore.FindByUsername(req.Username)
+	user, err := s.userStore.FindByUsername(ctx, req.Username)
 	if err != nil {
 		return nil, status.Errorf(codes.NotFound, "incorrect username or password")
 	}
@@ -87,7 +87,7 @@ func (s *AuthServer) Login(ctx context.Context, req *pb.LoginRequest) (*pb.Token
 		return nil, status.Error(codes.Internal, "could not generate token pair")
 	}
 
-	if err := s.refreshTokenStore.Add(tokenPair.RefreshToken); err != nil {
+	if err := s.refreshTokenStore.Add(ctx, tokenPair.RefreshToken); err != nil {
 		return nil, status.Errorf(codes.Internal, "could not save refresh token to database: %v", err)
 	}
 
@@ -107,19 +107,19 @@ func (s *AuthServer) Refresh(ctx context.Context, req *pb.RefreshRequest) (*pb.T
 		return nil, status.Error(codes.InvalidArgument, "could not parse refresh token")
 	}
 
-	token, err := s.refreshTokenStore.Get(refreshUUID)
+	token, err := s.refreshTokenStore.Get(ctx, refreshUUID)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, "refresh token does not exists")
 	}
 
 	if token.ExpiresAt.Unix() < utils.Now().Unix() {
-		if err := s.refreshTokenStore.Delete(refreshUUID); err != nil {
+		if err := s.refreshTokenStore.Delete(ctx, refreshUUID); err != nil {
 			logrus.Errorf("could not delete old refresh token: %v", err)
 		}
 		return nil, status.Error(codes.Unauthenticated, "refresh token is expired")
 	}
 
-	user, err := s.userStore.Find(token.UserId)
+	user, err := s.userStore.Find(ctx, token.UserId)
 	if err != nil {
 		logrus.Errorf("refresh token checks above should have failed, needs to be investigated: %v", err)
 		return nil, status.Error(codes.Internal, "hmm... this is strange. That could not possibly happen")
@@ -130,11 +130,11 @@ func (s *AuthServer) Refresh(ctx context.Context, req *pb.RefreshRequest) (*pb.T
 		return nil, status.Error(codes.Internal, "could not generate token pair")
 	}
 
-	if err := s.refreshTokenStore.Delete(refreshUUID); err != nil {
+	if err := s.refreshTokenStore.Delete(ctx, refreshUUID); err != nil {
 		return nil, status.Errorf(codes.Internal, "could not delete old refresh token: %v", err)
 	}
 
-	if err := s.refreshTokenStore.Add(tokenPair.RefreshToken); err != nil {
+	if err := s.refreshTokenStore.Add(ctx, tokenPair.RefreshToken); err != nil {
 		return nil, status.Errorf(codes.Internal, "could not save new refresh token: %v", err)
 	}
 

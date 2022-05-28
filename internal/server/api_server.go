@@ -55,7 +55,7 @@ func (s *ApiServer) CreateRoom(ctx context.Context, req *pb.CreateRoomRequest) (
 	}
 
 	newRoom := model.NewRoom(req.Name, false, usersInRoomUUIDs...)
-	err = s.roomStore.Add(newRoom)
+	err = s.roomStore.Add(ctx, newRoom)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "cannot create room: %v", err)
 	}
@@ -91,7 +91,7 @@ func (s *ApiServer) ListRooms(ctx context.Context, req *pb.ListRoomsRequest) (*p
 
 	var rooms []model.Room
 	if req.NextToken == nil {
-		rooms, err = s.roomStore.ListRoomsFirst(userId, int(req.PageSize))
+		rooms, err = s.roomStore.ListRoomsFirst(ctx, userId, int(req.PageSize))
 		if err != nil {
 			return nil, err
 		}
@@ -100,7 +100,7 @@ func (s *ApiServer) ListRooms(ctx context.Context, req *pb.ListRoomsRequest) (*p
 		if e != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "cannot parse next token: %v", e)
 		}
-		rooms, err = s.roomStore.ListRooms(userId, *lastMessageTime, int(req.PageSize))
+		rooms, err = s.roomStore.ListRooms(ctx, userId, *lastMessageTime, int(req.PageSize))
 	}
 
 	if err != nil {
@@ -156,7 +156,7 @@ func (s *ApiServer) ListMessages(ctx context.Context, req *pb.ListMessagesReques
 		return nil, status.Error(codes.InvalidArgument, "could not parse uuid")
 	}
 
-	roomUserIds, err := s.roomStore.UsersInRoom(chatId)
+	roomUserIds, err := s.roomStore.UsersInRoom(ctx, chatId)
 	if err != nil {
 		return nil, status.Error(codes.NotFound, "")
 	}
@@ -167,7 +167,7 @@ func (s *ApiServer) ListMessages(ctx context.Context, req *pb.ListMessagesReques
 
 	var messages []model.Message
 	if req.NextToken == nil {
-		messages, err = s.messageStore.ListMessagesFirst(chatId, int(req.PageSize))
+		messages, err = s.messageStore.ListMessagesFirst(ctx, chatId, int(req.PageSize))
 		if err != nil {
 			return nil, err
 		}
@@ -176,7 +176,7 @@ func (s *ApiServer) ListMessages(ctx context.Context, req *pb.ListMessagesReques
 		if e != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "cannot parse next token: %v", e)
 		}
-		messages, err = s.messageStore.ListMessages(chatId, *lastMessageTime, int(req.PageSize))
+		messages, err = s.messageStore.ListMessages(ctx, chatId, *lastMessageTime, int(req.PageSize))
 	}
 
 	var nextToken string
@@ -233,11 +233,11 @@ func (s *ApiServer) SendMessage(ctx context.Context, req *pb.MessageRequest) (*p
 
 		room := model.NewRoom("", true, senderId, recipientId)
 		message := model.NewMessage(senderId, uuid.Nil, req.Message)
-		roomResponse, err := s.roomStore.AddAndSendMessage(room, message)
+		roomResponse, err := s.roomStore.AddAndSendMessage(ctx, room, message)
 		if err != nil && status.Code(err) == codes.AlreadyExists {
 			message.RoomId = roomResponse.Id
 
-			err := s.messageStore.SendMessage(message)
+			err := s.messageStore.SendMessage(ctx, message)
 			if err != nil {
 				return nil, status.Errorf(codes.Internal, "could not create room or send message: %v", err)
 			}
@@ -265,7 +265,7 @@ func (s *ApiServer) SendMessage(ctx context.Context, req *pb.MessageRequest) (*p
 			return nil, status.Error(codes.InvalidArgument, "could not parse uuid")
 		}
 
-		roomUserIds, err := s.roomStore.UsersInRoom(roomId)
+		roomUserIds, err := s.roomStore.UsersInRoom(ctx, roomId)
 		if err != nil {
 			return nil, status.Error(codes.NotFound, "")
 		}
@@ -275,7 +275,7 @@ func (s *ApiServer) SendMessage(ctx context.Context, req *pb.MessageRequest) (*p
 		}
 
 		message := model.NewMessage(senderId, roomId, req.Message)
-		err = s.messageStore.SendMessage(message)
+		err = s.messageStore.SendMessage(ctx, message)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "could not send message: %v", err)
 		}

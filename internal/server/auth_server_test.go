@@ -26,7 +26,7 @@ func TestAuthServer_RegisterFailsIfUserAlreadyExists(t *testing.T) {
 		"",
 		model.USER_ROLE,
 	)
-	userStoreMock.On("FindByUsername", expectedUsername).Return(user, err)
+	userStoreMock.On("FindByUsername", mock.Anything, expectedUsername).Return(user, err)
 
 	res, err := authServer.Register(
 		context.TODO(),
@@ -44,7 +44,7 @@ func TestAuthServer_RegisterFailsIfUsernameTooLong(t *testing.T) {
 
 	expectedUsername := "some_very_long_user_name"
 
-	userStoreMock.On("FindByUsername", expectedUsername).Return(nil, nil)
+	userStoreMock.On("FindByUsername", mock.Anything, expectedUsername).Return(nil, nil)
 
 	res, err := authServer.Register(
 		context.TODO(),
@@ -63,7 +63,7 @@ func TestAuthServer_RegisterFailsIfPasswordTooShort(t *testing.T) {
 	expectedUsername := "some_user"
 	expectedPassword := "12345"
 
-	userStoreMock.On("FindByUsername", expectedUsername).Return(nil, nil)
+	userStoreMock.On("FindByUsername", mock.Anything, expectedUsername).Return(nil, nil)
 
 	res, err := authServer.Register(
 		context.TODO(),
@@ -83,7 +83,7 @@ func TestAuthServer_RegisterFailsIfJWTFails(t *testing.T) {
 	expectedPassword := "123456"
 	expectedError := errors.New("some_error")
 
-	userStoreMock.On("FindByUsername", expectedUsername).Return(nil, nil)
+	userStoreMock.On("FindByUsername", mock.Anything, expectedUsername).Return(nil, nil)
 	jwtManagerMock.On("Generate", mock.Anything).Return(nil, expectedError)
 
 	res, err := authServer.Register(
@@ -104,9 +104,9 @@ func TestAuthServer_RegisterFailsIfUserStoreFails(t *testing.T) {
 	expectedPassword := "123456"
 	expectedError := errors.New("some_error")
 
-	userStoreMock.On("FindByUsername", expectedUsername).Return(nil, nil)
+	userStoreMock.On("FindByUsername", mock.Anything, expectedUsername).Return(nil, nil)
 	jwtManagerMock.On("Generate", mock.Anything).Return(nil, nil)
-	userStoreMock.On("Save", mock.Anything).Return(expectedError)
+	userStoreMock.On("Save", mock.Anything, mock.Anything).Return(expectedError)
 
 	res, err := authServer.Register(
 		context.TODO(),
@@ -126,7 +126,7 @@ func TestAuthServer_RegisterFailsIfRefreshTokenStoreFails(t *testing.T) {
 	expectedPassword := "123456"
 	expectedError := errors.New("some_error")
 
-	userStoreMock.On("FindByUsername", expectedUsername).Return(nil, nil)
+	userStoreMock.On("FindByUsername", mock.Anything, expectedUsername).Return(nil, nil)
 	jwtManagerMock.On("Generate", mock.Anything).Return(&model.TokenPair{
 		JwtToken: "",
 		RefreshToken: &model.RefreshToken{
@@ -136,8 +136,8 @@ func TestAuthServer_RegisterFailsIfRefreshTokenStoreFails(t *testing.T) {
 			IssuedAt:  utils.Now(),
 		},
 	}, nil)
-	userStoreMock.On("Save", mock.Anything).Return(nil)
-	refreshTokenStoreMock.On("Add", mock.Anything).Return(expectedError)
+	userStoreMock.On("Save", mock.Anything, mock.Anything).Return(nil)
+	refreshTokenStoreMock.On("Add", mock.Anything, mock.Anything).Return(expectedError)
 
 	res, err := authServer.Register(
 		context.TODO(),
@@ -165,10 +165,10 @@ func TestAuthServer_RegisterSuccess(t *testing.T) {
 		},
 	}
 
-	userStoreMock.On("FindByUsername", expectedUsername).Return(nil, nil)
+	userStoreMock.On("FindByUsername", mock.Anything, expectedUsername).Return(nil, nil)
 	jwtManagerMock.On("Generate", mock.Anything).Return(expectedTokenPair, nil)
-	userStoreMock.On("Save", mock.Anything).Return(nil)
-	refreshTokenStoreMock.On("Add", mock.Anything).Return(nil)
+	userStoreMock.On("Save", mock.Anything, mock.Anything).Return(nil)
+	refreshTokenStoreMock.On("Add", mock.Anything, mock.Anything).Return(nil)
 
 	res, err := authServer.Register(
 		context.TODO(),
@@ -195,7 +195,7 @@ func TestAuthServer_LoginFailsIfUserDoesNotExist(t *testing.T) {
 
 	expectedUsername := "some_user"
 
-	userStoreMock.On("FindByUsername", expectedUsername).Return(nil, nil)
+	userStoreMock.On("FindByUsername", mock.Anything, expectedUsername).Return(nil, nil)
 
 	res, err := authServer.Login(
 		context.TODO(),
@@ -219,7 +219,7 @@ func TestAuthServer_LoginFailsIfPasswordIsNotCorrect(t *testing.T) {
 		password,
 		model.USER_ROLE,
 	)
-	userStoreMock.On("FindByUsername", expectedUsername).Return(user, nil)
+	userStoreMock.On("FindByUsername", mock.Anything, expectedUsername).Return(user, nil)
 
 	res, err := authServer.Login(
 		context.TODO(),
@@ -244,7 +244,7 @@ func TestAuthServer_LoginFailsIfJWTFails(t *testing.T) {
 		password,
 		model.USER_ROLE,
 	)
-	userStoreMock.On("FindByUsername", expectedUsername).Return(user, nil)
+	userStoreMock.On("FindByUsername", mock.Anything, expectedUsername).Return(user, nil)
 	jwtManagerMock.On("Generate", mock.Anything).Return(nil, expectedError)
 
 	res, err := authServer.Login(
@@ -270,8 +270,8 @@ func TestAuthServer_LoginFailsIfRefreshTokenStoreFails(t *testing.T) {
 		password,
 		model.USER_ROLE,
 	)
-	userStoreMock.On("FindByUsername", expectedUsername).Return(user, nil)
-	jwtManagerMock.On("Generate", mock.Anything).Return(&model.TokenPair{
+	userStoreMock.On("FindByUsername", mock.Anything, expectedUsername).Return(user, nil)
+	jwtManagerMock.On("Generate", mock.Anything, mock.Anything).Return(&model.TokenPair{
 		JwtToken: "",
 		RefreshToken: &model.RefreshToken{
 			Token:     uuid.New(),
@@ -280,7 +280,7 @@ func TestAuthServer_LoginFailsIfRefreshTokenStoreFails(t *testing.T) {
 			IssuedAt:  utils.Now(),
 		},
 	}, nil)
-	refreshTokenStoreMock.On("Add", mock.Anything).Return(expectedError)
+	refreshTokenStoreMock.On("Add", mock.Anything, mock.Anything).Return(expectedError)
 
 	res, err := authServer.Login(
 		context.TODO(),
@@ -313,9 +313,9 @@ func TestAuthServer_LoginSuccess(t *testing.T) {
 		password,
 		model.USER_ROLE,
 	)
-	userStoreMock.On("FindByUsername", expectedUsername).Return(user, nil)
-	jwtManagerMock.On("Generate", mock.Anything).Return(expectedTokenPair, nil)
-	refreshTokenStoreMock.On("Add", mock.Anything).Return(nil)
+	userStoreMock.On("FindByUsername", mock.Anything, expectedUsername).Return(user, nil)
+	jwtManagerMock.On("Generate", mock.Anything, mock.Anything).Return(expectedTokenPair, nil)
+	refreshTokenStoreMock.On("Add", mock.Anything, mock.Anything).Return(nil)
 
 	res, err := authServer.Login(
 		context.TODO(),
@@ -358,7 +358,7 @@ func TestAuthServer_RefreshFailsIfRefreshTokenStoreFails(t *testing.T) {
 	refreshTokenUuid := uuid.New()
 	expectedError := errors.New("some_error")
 
-	refreshTokenStoreMock.On("Get", refreshTokenUuid).Return(nil, expectedError)
+	refreshTokenStoreMock.On("Get", mock.Anything, refreshTokenUuid).Return(nil, expectedError)
 
 	res, err := authServer.Refresh(
 		context.TODO(),
@@ -381,8 +381,8 @@ func TestAuthServer_RefreshFailsIfRefreshTokenExpires(t *testing.T) {
 		IssuedAt:  utils.Now(),
 	}
 
-	refreshTokenStoreMock.On("Get", refreshTokenUuid).Return(refreshToken, nil)
-	refreshTokenStoreMock.On("Delete", refreshTokenUuid).Return(nil)
+	refreshTokenStoreMock.On("Get", mock.Anything, refreshTokenUuid).Return(refreshToken, nil)
+	refreshTokenStoreMock.On("Delete", mock.Anything, refreshTokenUuid).Return(nil)
 
 	res, err := authServer.Refresh(
 		context.TODO(),
@@ -407,8 +407,8 @@ func TestAuthServer_RefreshFailsIfUserIsNotFound(t *testing.T) {
 	}
 	expectedError := errors.New("some_error")
 
-	refreshTokenStoreMock.On("Get", refreshTokenUuid).Return(refreshToken, nil)
-	userStoreMock.On("Find", userUuid).Return(nil, expectedError)
+	refreshTokenStoreMock.On("Get", mock.Anything, refreshTokenUuid).Return(refreshToken, nil)
+	userStoreMock.On("Find", mock.Anything, userUuid).Return(nil, expectedError)
 
 	res, err := authServer.Refresh(
 		context.TODO(),
@@ -433,10 +433,10 @@ func TestAuthServer_RefreshFailsIfJWTFails(t *testing.T) {
 	}
 	expectedError := errors.New("some_error")
 
-	refreshTokenStoreMock.On("Get", refreshTokenUuid).Return(refreshToken, nil)
-	refreshTokenStoreMock.On("Delete", refreshTokenUuid).Return(nil)
-	userStoreMock.On("Find", userUuid).Return(nil, nil)
-	jwtManagerMock.On("Generate", mock.Anything).Return(nil, expectedError)
+	refreshTokenStoreMock.On("Get", mock.Anything, refreshTokenUuid).Return(refreshToken, nil)
+	refreshTokenStoreMock.On("Delete", mock.Anything, mock.Anything, refreshTokenUuid).Return(nil)
+	userStoreMock.On("Find", mock.Anything, userUuid).Return(nil, nil)
+	jwtManagerMock.On("Generate", mock.Anything, mock.Anything).Return(nil, expectedError)
 
 	res, err := authServer.Refresh(
 		context.TODO(),
@@ -461,10 +461,10 @@ func TestAuthServer_RefreshFailsIfDeletingTokenFails(t *testing.T) {
 	}
 	expectedError := errors.New("some_error")
 
-	refreshTokenStoreMock.On("Get", refreshTokenUuid).Return(refreshToken, nil)
-	userStoreMock.On("Find", userUuid).Return(nil, nil)
-	jwtManagerMock.On("Generate", mock.Anything).Return(nil, nil)
-	refreshTokenStoreMock.On("Delete", refreshTokenUuid).Return(expectedError)
+	refreshTokenStoreMock.On("Get", mock.Anything, refreshTokenUuid).Return(refreshToken, nil)
+	userStoreMock.On("Find", mock.Anything, userUuid).Return(nil, nil)
+	jwtManagerMock.On("Generate", mock.Anything, mock.Anything).Return(nil, nil)
+	refreshTokenStoreMock.On("Delete", mock.Anything, refreshTokenUuid).Return(expectedError)
 
 	res, err := authServer.Refresh(
 		context.TODO(),
@@ -492,11 +492,11 @@ func TestAuthServer_RefreshFailsIfCreatingTokenFails(t *testing.T) {
 	}
 	expectedError := errors.New("some_error")
 
-	refreshTokenStoreMock.On("Get", refreshTokenUuid).Return(tokenPair.RefreshToken, nil)
-	userStoreMock.On("Find", userUuid).Return(nil, nil)
-	jwtManagerMock.On("Generate", mock.Anything).Return(tokenPair, nil)
-	refreshTokenStoreMock.On("Delete", refreshTokenUuid).Return(nil)
-	refreshTokenStoreMock.On("Add", mock.Anything).Return(expectedError)
+	refreshTokenStoreMock.On("Get", mock.Anything, refreshTokenUuid).Return(tokenPair.RefreshToken, nil)
+	userStoreMock.On("Find", mock.Anything, userUuid).Return(nil, nil)
+	jwtManagerMock.On("Generate", mock.Anything, mock.Anything).Return(tokenPair, nil)
+	refreshTokenStoreMock.On("Delete", mock.Anything, refreshTokenUuid).Return(nil)
+	refreshTokenStoreMock.On("Add", mock.Anything, mock.Anything).Return(expectedError)
 
 	res, err := authServer.Refresh(
 		context.TODO(),
@@ -523,11 +523,11 @@ func TestAuthServer_RefreshSuccess(t *testing.T) {
 		},
 	}
 
-	refreshTokenStoreMock.On("Get", refreshTokenUuid).Return(tokenPair.RefreshToken, nil)
-	userStoreMock.On("Find", userUuid).Return(nil, nil)
-	jwtManagerMock.On("Generate", mock.Anything).Return(tokenPair, nil)
-	refreshTokenStoreMock.On("Delete", refreshTokenUuid).Return(nil)
-	refreshTokenStoreMock.On("Add", mock.Anything).Return(nil)
+	refreshTokenStoreMock.On("Get", mock.Anything, refreshTokenUuid).Return(tokenPair.RefreshToken, nil)
+	userStoreMock.On("Find", mock.Anything, userUuid).Return(nil, nil)
+	jwtManagerMock.On("Generate", mock.Anything, mock.Anything).Return(tokenPair, nil)
+	refreshTokenStoreMock.On("Delete", mock.Anything, refreshTokenUuid).Return(nil)
+	refreshTokenStoreMock.On("Add", mock.Anything, mock.Anything).Return(nil)
 
 	res, err := authServer.Refresh(
 		context.TODO(),

@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"time"
 
 	"github.com/ArtyomArtamonov/msg/internal/model"
@@ -10,9 +11,9 @@ import (
 )
 
 type MessageStore interface {
-	SendMessage(message *model.Message) error
-	ListMessages(id uuid.UUID, createdAt time.Time, pageSize int) ([]model.Message, error)
-	ListMessagesFirst(id uuid.UUID, pageSize int) ([]model.Message, error)
+	SendMessage(ctx context.Context, message *model.Message) error
+	ListMessages(ctx context.Context, id uuid.UUID, createdAt time.Time, pageSize int) ([]model.Message, error)
+	ListMessagesFirst(ctx context.Context, id uuid.UUID, pageSize int) ([]model.Message, error)
 }
 
 type PostgresMessageStore struct {
@@ -25,7 +26,7 @@ func NewPostgresMessageStore(db *sqlx.DB) *PostgresMessageStore {
 	}
 }
 
-func (s *PostgresMessageStore) ListMessages(chatId uuid.UUID, createdAt time.Time, pageSize int) ([]model.Message, error) {
+func (s *PostgresMessageStore) ListMessages(ctx context.Context, chatId uuid.UUID, createdAt time.Time, pageSize int) ([]model.Message, error) {
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 	sql, _, err := psql.
 		Select("id, room_id, user_id, text, created_at").
@@ -42,7 +43,7 @@ func (s *PostgresMessageStore) ListMessages(chatId uuid.UUID, createdAt time.Tim
 	}
 
 	messages := []model.Message{}
-	err = s.db.Select(&messages, sql, chatId, createdAt)
+	err = s.db.SelectContext(ctx, &messages, sql, chatId, createdAt)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +51,7 @@ func (s *PostgresMessageStore) ListMessages(chatId uuid.UUID, createdAt time.Tim
 	return messages, err
 }
 
-func (s *PostgresMessageStore) ListMessagesFirst(chatId uuid.UUID, pageSize int) ([]model.Message, error) {
+func (s *PostgresMessageStore) ListMessagesFirst(ctx context.Context, chatId uuid.UUID, pageSize int) ([]model.Message, error) {
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 	sql, _, err := psql.
 		Select("id, room_id, user_id, text, created_at").
@@ -64,7 +65,7 @@ func (s *PostgresMessageStore) ListMessagesFirst(chatId uuid.UUID, pageSize int)
 	}
 
 	messages := []model.Message{}
-	err = s.db.Select(&messages, sql, chatId)
+	err = s.db.SelectContext(ctx, &messages, sql, chatId)
 	if err != nil {
 		return nil, err
 	}
@@ -72,9 +73,9 @@ func (s *PostgresMessageStore) ListMessagesFirst(chatId uuid.UUID, pageSize int)
 	return messages, err
 }
 
-func (s *PostgresMessageStore) SendMessage(message *model.Message) error {
+func (s *PostgresMessageStore) SendMessage(ctx context.Context, message *model.Message) error {
 	var messageId uuid.UUID
-	err := s.db.Get(&messageId, "INSERT INTO messages(id, room_id, user_id, text, created_at) VALUES($1, $2, $3, $4, $5) RETURNING id",
+	err := s.db.GetContext(ctx, &messageId, "INSERT INTO messages(id, room_id, user_id, text, created_at) VALUES($1, $2, $3, $4, $5) RETURNING id",
 		message.Id, message.RoomId, message.UserId, message.Text, message.CreatedAt)
 	message.Id = messageId
 

@@ -26,7 +26,7 @@ RUN go mod download
 RUN go get github.com/go-delve/delve/cmd/dlv
 RUN go install github.com/go-delve/delve/cmd/dlv
 
-RUN go build -race -v -o /bin/program ./cmd/api_service/main.go
+RUN go build -v -o /bin/program ./cmd/api_service/main.go
 
 RUN cp .env /.env
 

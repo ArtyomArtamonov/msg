@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"time"
@@ -75,7 +76,7 @@ func createAndPrepareGRPCServer(db *sqlx.DB, ch *amqp.Channel, env *server.Env) 
 		if err != nil {
 			logrus.Error(err)
 		}
-		if err := userStore.Save(user); err != nil {
+		if err := userStore.Save(context.TODO(), user); err != nil {
 			logrus.Error(err)
 		}
 
@@ -83,7 +84,7 @@ func createAndPrepareGRPCServer(db *sqlx.DB, ch *amqp.Channel, env *server.Env) 
 		if err != nil {
 			logrus.Error(err)
 		}
-		if err := userStore.Save(admin); err != nil {
+		if err := userStore.Save(context.TODO(), admin); err != nil {
 			logrus.Error(err)
 		}
 	}
