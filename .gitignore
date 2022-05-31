@@ -3,6 +3,7 @@
 docker-compose.env
 pgadmin
 bin
+.idea
 
 __debug_bin*
 *.exe
